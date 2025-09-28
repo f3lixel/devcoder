@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--project-ref=dyvxquavfhopegjagwqs"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "sbp_7b7e372428d847634b7137a7ebed7c172689c2d5"
+      }
+    },
+    "shadcn": {
+      "httpUrl": "https://www.shadcn.io/api/mcp"
+    }
+  }
+}

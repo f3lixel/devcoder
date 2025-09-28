@@ -1,0 +1,3 @@
+/* Local proxy that imports the full official Codicons CSS
+   Ensures every codicon-* class has correct glyph mapping */
+@import url("https://cdn.jsdelivr.net/npm/@vscode/codicons/dist/codicon.css");

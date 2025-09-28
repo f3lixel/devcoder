@@ -1,0 +1,16 @@
+## Error Type
+Runtime ReferenceError
+
+## Error Message
+setReasoningText is not defined
+
+
+    at AIChat.useCallback[handleSubmit] (file://C:/Users/suppo/Neuer Ordner (2)/felixel-dev/.next/static/chunks/src_38741114._.js?id=%255Bproject%255D%252Fsrc%252Fcomponents%252FAIChat.tsx+%255Bapp-client%255D+%2528ecmascript%2529:643:13)
+    at form (<anonymous>:null:null)
+    at _c (file://C:/Users/suppo/Neuer Ordner (2)/felixel-dev/.next/static/chunks/src_38741114._.js:633:214)
+    at AIChat (file://C:/Users/suppo/Neuer Ordner (2)/felixel-dev/.next/static/chunks/src_38741114._.js?id=%255Bproject%255D%252Fsrc%252Fcomponents%252FAIChat.tsx+%255Bapp-client%255D+%2528ecmascript%2529:1340:223)
+    at HomeContent (file://C:/Users/suppo/Neuer Ordner (2)/felixel-dev/.next/static/chunks/src_38741114._.js:5140:237)
+    at Home (.next\static\chunks\src_38741114._.js:4942:221)
+    at ClientPageRoot (file://C:/Users/suppo/Neuer Ordner (2)/felixel-dev/.next/static/chunks/node_modules_next_dist_8db7fb1f._.js:2645:50)
+
+Next.js version: 15.5.0 (Turbopack)
