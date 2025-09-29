@@ -9,15 +9,14 @@ Diese Datei definiert verbindliche Regeln, Konventionen und Integrationshinweise
 - UI-Patterns: Chat-Interface mit Reasoning-Badge (ausklappbar), getrennte Chat-Bubbles
 - Daten/Backend:
   - Aktuell zwei Wege für AI-Streaming vorhanden, aber produktiv genutzt wird die Next.js API-Route `src/app/api/chat/route.ts`.
-  - Supabase ist integriert (Client/Server Helpers vorhanden), Edge Function `ai-gateway` existiert weiterhin, wird aber aktuell nicht mehr vom Chat genutzt.
+  - Supabase ist integriert (Client/Server Helpers vorhanden), Edge Function `ai-gateway` wurde entfernt (AI functionality disabled).
 
 ## Verzeichnisse (relevant)
 - `src/components/AIChat.tsx`: Haupt-Chatoberfläche inkl. Streaming-Client, Reasoning-Darstellung und Nachrichtenliste
 - `src/app/api/chat/route.ts`: Server-Streaming-Route (SSE) zur AI (OpenRouter)
 - `src/components/ai-elements/`: UI-Komponenten (Message, Reasoning, Response)
 - `src/components/ui/shadcn-io/ai/`: ältere UI-Komponenten (nicht bevorzugt für neue Features)
-- `src/lib/ai-service.ts`: Kontext- und Code-Generierungslogik (für Code-Mode; aktuell Chat nutzt /api/chat)
-- `supabase/functions/ai-gateway/`: Edge Function für AI-Streaming (historisch, optional)
+- `src/lib/ai-service.ts`: Kontext- und Code-Generierungslogik (AI functionality disabled)
 - `src/lib/supabase/*`: Supabase-Client/Server/Service Helpers
 
 ## AI-Streaming Architektur (aktiv)
@@ -53,7 +52,7 @@ Diese Datei definiert verbindliche Regeln, Konventionen und Integrationshinweise
 ## Sicherheits- und Secrets-Regeln
 - API Keys: liegen in Umgebungsvariablen (z. B. `OPENROUTER_API_KEY`). Niemals in Client-Bundles oder Logs ausgeben.
 - Supabase: `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` sind öffentlich; Service Keys niemals clientseitig nutzen.
-- Edge Function (`ai-gateway`) akzeptiert CORS, aber ist optional; produktiver Pfad ist `/api/chat`.
+- Edge Function (`ai-gateway`) wurde entfernt. Produktiver Pfad ist `/api/chat`.
 
 ## Entwicklungsregeln
 - Keine unaufgeforderten strukturellen Änderungen an Public Interfaces der UI-Komponenten.
@@ -67,8 +66,7 @@ Diese Datei definiert verbindliche Regeln, Konventionen und Integrationshinweise
 - „Zu hohe Bubbles“: `prose`-Klasse kann Margins hinzufügen; bei Bedarf `prose-p:my-0` etc. ergänzen.
 
 ## Erweiterungen / Alternativpfade
-- Supabase Edge Function `supabase/functions/ai-gateway/index.ts`: SSE-Proxy mit gleicher Typisierung (token/reasoning/status/stepStart/stepDone/done). Aktuell nicht vom Chat genutzt, aber funktionsfähig.
-- `src/lib/ai-service.ts`: Für Code-Generierungen mit Datei-Extraktion. Sollte nicht parallel zum Chat-Flow mischen, es sei denn, bewusst Code-Mode.
+- `src/lib/ai-service.ts`: AI functionality disabled - gibt Fehlermeldung zurück.
 
 ## Beiträge/Änderungen durch AIs
 - Vor Änderungen im Chat-Flow: sicherstellen, dass Reasoning-Badge weiterhin ausschließlich den Thinking-Text trägt.

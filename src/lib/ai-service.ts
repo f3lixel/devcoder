@@ -201,67 +201,24 @@ export class AICodeService {
   }
 
   /**
-   * Processes an AI request
+   * Processes an AI request (AI functionality disabled)
    * @param request - The AI code request
    * @returns Promise resolving to the AI response
    */
   async processRequest(request: AICodeRequest): Promise<AICodeResponse> {
-    return this.processWithSupabase(request);
+    return {
+      message: 'AI functionality has been disabled. Please contact your administrator to re-enable AI features.'
+    };
   }
 
   /**
-   * Processes a request using the Supabase Edge Function
+   * Processes a request using the Supabase Edge Function (disabled)
    * @param request - The AI code request
    * @returns Promise resolving to the AI response
    * @throws Error if the request fails
    */
   private async processWithSupabase(request: AICodeRequest): Promise<AICodeResponse> {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    
-    if (!supabaseUrl) {
-      throw new Error('Supabase URL is not configured');
-    }
-
-    const supabase = supabaseBrowser();
-    const { data: { session } } = await supabase.auth.getSession();
-    const authToken = session?.access_token || anonKey || '';
-
-    const response = await fetch(`${supabaseUrl}/functions/v1/ai-gateway`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(anonKey && { apikey: anonKey }),
-        ...(authToken && { Authorization: `Bearer ${authToken}` })
-      },
-      body: JSON.stringify({
-        prompt: this.buildContextPrompt(request),
-        model: 'qwen/qwen3-next-80b-a3b-thinking',
-        mode: request.mode || 'code'
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`AI request failed: ${response.status}`);
-    }
-
-    const contentType = response.headers.get('Content-Type') || '';
-    if (contentType.includes('application/json')) {
-      const data = await response.json();
-      return this.parseAIResponse(data);
-    }
-
-    const text = await response.text();
-    const { files: extractedFiles, cleanedText } = this.extractFilesFromMessage(text);
-
-    if (extractedFiles.length > 0 || cleanedText.trim() !== '') {
-      return {
-        message: cleanedText.trim() || 'Code-Änderungen aus der AI extrahiert.',
-        files: extractedFiles
-      };
-    }
-    
-    return { message: cleanedText };
+    throw new Error('Supabase AI gateway has been disabled');
   }
 
   /**
@@ -269,7 +226,7 @@ export class AICodeService {
    * @private
    */
   private async processWithOpenAI(_request: AICodeRequest): Promise<AICodeResponse> {
-    throw new Error('Local OpenAI route is disabled; use Supabase Edge Function');
+    throw new Error('All AI processing has been disabled');
   }
 
   /**

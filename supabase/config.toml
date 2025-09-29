@@ -9,10 +9,3 @@ entrypoint = "./functions/hello/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/hello/*.html" ]
-
-[functions.ai-gateway]
-enabled = true
-verify_jwt = false
-# Using default runtime imports from jsr:@supabase/functions
-# No import_map needed for this function
-entrypoint = "./functions/ai-gateway/index.ts"

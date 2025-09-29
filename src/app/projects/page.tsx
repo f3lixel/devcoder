@@ -1,7 +1,7 @@
 'use client';
 
 import ResizableSplit from "@/components/ResizableSplit";
-import AIChat from "@/components/AIChat";
+import AssistantChat from "@/components/AssistantChat";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 import { LayoutDashboard, Settings } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -9,8 +9,6 @@ import { useViewMode } from "@/components/view-mode-context";
 import { Suspense, useState, useMemo, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import type { SandpackProviderProps } from "@codesandbox/sandpack-react";
-
-const SandboxPlayground = dynamic(() => import("@/components/SandboxPlayground"), { ssr: false });
 
 const DEFAULT_STORAGE_KEY = 'sandbox:react:session:v1';
 
@@ -187,8 +185,8 @@ function HomeContent() {
           </Sidebar>
           <div className="h-full flex-1 min-w-0 rounded-2xl">
             <Suspense fallback={null}>
-              {/* Vereinheitlichte AI-Chat-Komponente */}
-              <AIChat 
+              {/* Neue Assistant-Chat-Komponente */}
+              <AssistantChat
                 onNewFiles={handleNewFiles}
                 onRunCommand={handleRunCommand}
                 files={files}
