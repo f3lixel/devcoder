@@ -4,6 +4,11 @@ import { createServerClient } from "@supabase/ssr";
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
 
+  // Never interfere with API routes
+  if (req.nextUrl.pathname.startsWith("/api")) {
+    return res;
+  }
+
   const isProjectsBase = req.nextUrl.pathname === "/projects";
   const isProjectsRoute = req.nextUrl.pathname.startsWith("/projects");
   const accept = req.headers.get("accept") || "";
@@ -44,17 +49,17 @@ export async function middleware(req: NextRequest) {
         },
       }
     );
-    const { data } = await supabase.auth.getUser();
-    user = data?.user ?? null;
-  } catch {
-    // If Supabase throws and we're navigating to a protected projects page, enforce login redirect
+    // Only attempt auth fetch for page navigations on /projects routes
     if (isProjectsRoute && isPageNavigation) {
-      const url = req.nextUrl.clone();
-      url.pathname = "/";
-      url.searchParams.set("redirect", `${req.nextUrl.pathname}${req.nextUrl.search}`);
-      url.searchParams.set("login", "1");
-      return NextResponse.redirect(url);
+      const authPromise = supabase.auth.getUser();
+      const timeoutPromise = new Promise<{ data?: { user: any | null } }>((resolve) => {
+        setTimeout(() => resolve({ data: { user: null } }), 2000);
+      });
+      const { data } = await Promise.race([authPromise, timeoutPromise]);
+      user = data?.user ?? null;
     }
+  } catch {
+    // Network/auth errors should never block navigation; bypass gracefully
     return res;
   }
 

@@ -189,7 +189,7 @@ export class AICodeService {
 
   constructor() {
     this.contextManager = new AIContextManager();
-    this.apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
+    this.apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
   }
 
   /**

@@ -175,7 +175,7 @@ export function ChatHistory({ onLoadSession, onNewChat, currentSessionId }: Chat
                             <Eye className="h-3 w-3" />
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-2xl max-h-[80vh]">
+                        <DialogContent aria-describedby={undefined} className="max-w-2xl max-h-[80vh]">
                           <DialogHeader>
                             <DialogTitle>{selectedSession?.title}</DialogTitle>
                           </DialogHeader>

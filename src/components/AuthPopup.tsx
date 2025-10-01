@@ -26,13 +26,18 @@ export default function AuthPopup({ open, onClose, redirectToUrl, onSignedIn }: 
 
   useEffect(() => {
     if (!open) return;
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((evt: "SIGNED_IN" | "SIGNED_OUT" | "USER_UPDATED" | "PASSWORD_RECOVERY" | "TOKEN_REFRESHED" | "USER_DELETED" | "MFA_CHALLENGE_VERIFIED" | "MFA_CHALLENGE_FAILED" | "MFA_ENROLLMENT_ATTEMPTED" | "MFA_ENROLLMENT_COMPLETED" | "MFA_ENROLLMENT_FAILED", session: { user?: unknown } | null) => {
-      if (evt === "SIGNED_IN" && session?.user) {
-        onClose();
-        onSignedIn?.();
-      }
-    });
-    return () => subscription.unsubscribe();
+    const auth = (supabase as any)?.auth;
+    if (auth && typeof auth.onAuthStateChange === 'function') {
+      const { data } = auth.onAuthStateChange((evt: "SIGNED_IN" | "SIGNED_OUT" | "USER_UPDATED" | "PASSWORD_RECOVERY" | "TOKEN_REFRESHED" | "USER_DELETED" | "MFA_CHALLENGE_VERIFIED" | "MFA_CHALLENGE_FAILED" | "MFA_ENROLLMENT_ATTEMPTED" | "MFA_ENROLLMENT_COMPLETED" | "MFA_ENROLLMENT_FAILED", session: { user?: unknown } | null) => {
+        if (evt === "SIGNED_IN" && session?.user) {
+          onClose();
+          onSignedIn?.();
+        }
+      });
+      const subscription = data?.subscription;
+      return () => { try { subscription?.unsubscribe(); } catch {} };
+    }
+    return () => {};
   }, [open]);
 
   const handleInput = (field: string, value: string) => setFormData((p) => ({ ...p, [field]: value }));
@@ -90,7 +95,7 @@ export default function AuthPopup({ open, onClose, redirectToUrl, onSignedIn }: 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md p-0 bg-background border-border overflow-hidden">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-md p-0 bg-background border-border overflow-hidden">
         <DialogTitle className="sr-only">
           {isSignUp ? "Konto erstellen" : "Willkommen zurück"}
         </DialogTitle>

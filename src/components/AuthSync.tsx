@@ -22,11 +22,19 @@ export default function AuthSync() {
       else sync(null, null);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_evt: "SIGNED_IN" | "SIGNED_OUT" | "USER_UPDATED" | "PASSWORD_RECOVERY" | "TOKEN_REFRESHED" | "USER_DELETED" | "MFA_CHALLENGE_VERIFIED" | "MFA_CHALLENGE_FAILED" | "MFA_ENROLLMENT_ATTEMPTED" | "MFA_ENROLLMENT_COMPLETED" | "MFA_ENROLLMENT_FAILED", session: { access_token?: string; refresh_token?: string } | null) => {
-      // whenever auth state changes, attempt to sync cookie/session with server
-      sync(session?.access_token, session?.refresh_token);
-    });
-    return () => subscription.unsubscribe();
+    const auth = (supabase as any)?.auth;
+    if (auth && typeof auth.onAuthStateChange === 'function') {
+      const { data } = auth.onAuthStateChange((_evt: "SIGNED_IN" | "SIGNED_OUT" | "USER_UPDATED" | "PASSWORD_RECOVERY" | "TOKEN_REFRESHED" | "USER_DELETED" | "MFA_CHALLENGE_VERIFIED" | "MFA_CHALLENGE_FAILED" | "MFA_ENROLLMENT_ATTEMPTED" | "MFA_ENROLLMENT_COMPLETED" | "MFA_ENROLLMENT_FAILED", session: { access_token?: string; refresh_token?: string } | null) => {
+        // whenever auth state changes, attempt to sync cookie/session with server
+        sync(session?.access_token, session?.refresh_token);
+      });
+      const subscription = data?.subscription;
+      return () => {
+        try { subscription?.unsubscribe(); } catch {}
+      };
+    }
+    // Fallback: no subscription in mock mode
+    return () => {};
   }, []);
 
   return null;

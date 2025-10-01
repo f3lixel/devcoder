@@ -265,7 +265,7 @@ export default function DashboardPage() {
       </main>
     </div>
     <Dialog open={projectDialogOpen} onOpenChange={(open) => { setProjectDialogOpen(open); if (!open) { setSelectedProject(null); setDeletePopoverOpen(false) } }}>
-      <DialogContent className="bg-white/5 border-white/10 text-white backdrop-blur-md sm:max-w-2xl">
+      <DialogContent aria-describedby={undefined} className="bg-white/5 border-white/10 text-white backdrop-blur-md sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-white/90">{selectedProject?.name ?? "Projekt"}</DialogTitle>
         </DialogHeader>

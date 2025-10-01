@@ -12,7 +12,7 @@ Diese Datei definiert verbindliche Regeln, Konventionen und Integrationshinweise
   - Supabase ist integriert (Client/Server Helpers vorhanden), Edge Function `ai-gateway` wurde entfernt (AI functionality disabled).
 
 ## Verzeichnisse (relevant)
-- `src/components/AIChat.tsx`: Haupt-Chatoberfläche inkl. Streaming-Client, Reasoning-Darstellung und Nachrichtenliste
+- `src/components/Assistant.tsx`: Haupt-Chatoberfläche inkl. Streaming-Client, Reasoning-Darstellung und Nachrichtenliste
 - `src/app/api/chat/route.ts`: Server-Streaming-Route (SSE) zur AI (OpenRouter)
 - `src/components/ai-elements/`: UI-Komponenten (Message, Reasoning, Response)
 - `src/components/ui/shadcn-io/ai/`: ältere UI-Komponenten (nicht bevorzugt für neue Features)
@@ -20,7 +20,7 @@ Diese Datei definiert verbindliche Regeln, Konventionen und Integrationshinweise
 - `src/lib/supabase/*`: Supabase-Client/Server/Service Helpers
 
 ## AI-Streaming Architektur (aktiv)
-- Client: `AIChat.tsx` ruft `POST /api/chat` mit `{ messages: UIMessage[] }` auf.
+- Client: `assistant.tsx` ruft `POST /api/chat` mit `{ messages: UIMessage[] }` auf.
 - Server: `src/app/api/chat/route.ts` proxyt zu OpenRouter als SSE (Content-Type: `text/event-stream`).
 - Modell: `qwen/qwen3-next-80b-a3b-thinking` (Reasoning aktiviert: `include_reasoning: true`, `reasoning: { effort: 'medium' }`).
 - Events (Server → Client):
@@ -29,7 +29,7 @@ Diese Datei definiert verbindliche Regeln, Konventionen und Integrationshinweise
   - `{"type":"status"|"stepStart"|"stepDone"|"done"}` → Live-Status/Schritte (UI-Progress)
 
 ## Chat-UI Regeln
-- Nachrichtenstruktur in `AIChat.tsx`: Array von Objekten `{ id, role, content, reasoning?, files?, commands?, progress? }`.
+- Nachrichtenstruktur in `assistant.tsx`: Array von Objekten `{ id, role, content, reasoning?, files?, commands?, progress? }`.
 - Reasoning-Text NICHT in der sichtbaren Antwort wiederholen. Anzeige nur im ausklappbaren Badge über der Assistant-Bubble.
 - Die finale AI-Antwort wird als eigene Chat-Bubble (`Message` → `MessageContent`) gerendert.
 - Während Streaming: Typing/Token-Append über `appendToAssistant`, Reasoning-Append über `appendToReasoning`.

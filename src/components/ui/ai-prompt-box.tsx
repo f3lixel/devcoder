@@ -238,7 +238,7 @@ const ImageViewDialog: React.FC<ImageViewDialogProps> = ({ imageUrl, onClose }) 
   if (!imageUrl) return null;
   return (
     <Dialog open={!!imageUrl} onOpenChange={onClose}>
-      <DialogContent className="p-0 border-none bg-transparent shadow-none max-w-[90vw] md:max-w-[800px]">
+      <DialogContent aria-describedby={undefined} className="p-0 border-none bg-transparent shadow-none max-w-[90vw] md:max-w-[800px]">
         <DialogTitle className="sr-only">Image Preview</DialogTitle>
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -382,6 +382,8 @@ const PromptInputTextarea: React.FC<PromptInputTextareaProps & React.ComponentPr
   return (
     <Textarea
       ref={textareaRef}
+      id={(props as any)?.id ?? "ai-prompt-input"}
+      name={(props as any)?.name ?? "prompt"}
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={handleKeyDown}
@@ -655,6 +657,8 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
                 <input
                   ref={uploadInputRef}
                   type="file"
+                  id="ai-upload-image"
+                  name="ai-upload-image"
                   className="hidden"
                   onChange={(e) => {
                     if (e.target.files && e.target.files.length > 0) processFile(e.target.files[0]);

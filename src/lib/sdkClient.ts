@@ -1,4 +1,4 @@
-import { streamText, type CoreMessage, convertToCoreMessages, generateText } from "@ai-sdk/react";
+import { streamText, type CoreMessage, convertToCoreMessages, generateText } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 
 // Shared OpenRouter provider instance
