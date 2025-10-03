@@ -19,6 +19,7 @@
     "@codesandbox/sandpack-react": "^2.20.0",
     "@headlessui/react": "^2.2.7",
     "@icons-pack/react-simple-icons": "^13.7.0",
+    "@mastra/core": "^0.20.0",
     "@monaco-editor/react": "^4.7.0",
     "@openrouter/ai-sdk-provider": "^1.2.0",
     "@radix-ui/react-accordion": "^1.2.12",
@@ -78,6 +79,7 @@
     "xterm": "5.3.0",
     "xterm-addon-fit": "0.8.0",
     "yjs": "^13.6.18",
+    "zod": "^4.1.11",
     "zustand": "^5.0.8"
   },
   "optionalDependencies": {

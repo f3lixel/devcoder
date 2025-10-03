@@ -9,6 +9,7 @@ import { Loader } from "@/components/ai-elements/loader";
 import { cn } from "@/lib/utils";
 import type { UIMessage } from "ai";
 import { nanoid } from "nanoid";
+import { usePathname, useSearchParams } from "next/navigation";
 
 interface NewAIChatProps {
   onNewFiles?: (files: Array<{ path: string; content: string }>) => void;
@@ -17,6 +18,7 @@ interface NewAIChatProps {
   currentFile?: { path: string; content: string } | undefined;
   terminalOutput?: string;
   onFocusFile?: (path: string) => void;
+  projectId?: string;
 }
 
 type ChatMessage = {
@@ -35,12 +37,25 @@ export function NewAIChat({
   files,
   currentFile,
   terminalOutput,
-  onFocusFile
+  onFocusFile,
+  projectId: projectIdProp
 }: NewAIChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [status, setStatus] = useState<ChatStatus>("idle");
   const [streamingMessage, setStreamingMessage] = useState<string>("");
   const abortControllerRef = useRef<AbortController | null>(null);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const projectId = (() => {
+    if (projectIdProp) return projectIdProp;
+    try {
+      const m = pathname?.match(/^\/projects\/([^\/]+)/);
+      if (m?.[1]) return m[1];
+      const q = searchParams?.get('projectId');
+      if (q) return q;
+    } catch {}
+    return null;
+  })();
 
   const extractFilesFromMessage = useCallback((text: string): Array<{ path: string; content: string; type?: string }> => {
     const files: Array<{ path: string; content: string; type?: string }> = [];
@@ -94,6 +109,17 @@ export function NewAIChat({
   const handleSubmit = useCallback(async (message: PromptInputMessage) => {
     if (!message.text?.trim() && !message.files?.length) return;
 
+    if (!projectId) {
+      const errorMessage: ChatMessage = {
+        id: nanoid(),
+        role: "assistant",
+        content: "Bitte öffnen Sie ein Projekt (/projects/[id]), damit der Coding Agent auf die Projektdateien zugreifen kann.",
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      return;
+    }
+
     // Add user message
     const userMessage: ChatMessage = {
       id: nanoid(),
@@ -123,10 +149,10 @@ export function NewAIChat({
       // Robust streaming reader for SSE/text streams
       let partial = "";
 
-      const res = await fetch("/api/chat", {
+      const res = await fetch("/api/agent/coding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: messagesToSend }),
+        body: JSON.stringify({ projectId, goal: message.text || "" }),
         signal: abortController.signal,
       });
 
@@ -134,7 +160,7 @@ export function NewAIChat({
         const err = await res.text().catch(() => "");
         throw new Error(`Chat API failed: ${res.status} ${err}`);
       }
-      if (!res.body) throw new Error("Kein Stream-Body von /api/chat");
+      if (!res.body) throw new Error("Kein Stream-Body von /api/agent/coding");
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -165,28 +191,13 @@ export function NewAIChat({
             if (data === "[DONE]") continue;
             try {
               const evt = JSON.parse(data);
-              // ai SDK emits { type: 'text-delta', delta?: string, textDelta?: string }
-              if (evt?.type === "text-delta") {
-                const delta: string = evt.delta ?? evt.textDelta ?? "";
-                if (delta) {
-                  partial += delta;
-                  setStreamingMessage(partial);
-                }
-                continue;
-              }
-              // Some providers emit choices[0].delta.content
-              const choiceDelta: string | undefined = evt?.choices?.[0]?.delta?.content;
-              if (choiceDelta) {
-                partial += choiceDelta;
+              // New agent SSE event schema
+              if (evt?.type === "token" && typeof evt.text === "string") {
+                partial += evt.text;
                 setStreamingMessage(partial);
                 continue;
               }
-              // Fallbacks
-              if (typeof evt?.content === "string") {
-                partial += evt.content;
-                setStreamingMessage(partial);
-                continue;
-              }
+              // Optionally handle files/status events later as needed
             } catch {
               // Non-JSON data lines are ignored
             }
@@ -241,7 +252,7 @@ export function NewAIChat({
     } finally {
       abortControllerRef.current = null;
     }
-  }, [messages, onNewFiles, extractFilesFromMessage]);
+  }, [messages, onNewFiles, extractFilesFromMessage, projectId]);
 
   const handleCancel = useCallback(() => {
     if (abortControllerRef.current) {
