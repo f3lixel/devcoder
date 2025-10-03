@@ -1,0 +1,61 @@
+---
+alwaysApply: true
+description: "Preserve functionality when making UI changes - ensure no functions are removed or changed, automatically transfer existing functionality to new UI components"
+---
+
+# UI-Funktionalitäts-Erhaltung
+
+## Grundregel
+Bei Änderungen an UI-Komponenten MUSS die vorhandene Funktionalität vollständig erhalten bleiben. Keine Funktionen dürfen entfernt, geändert oder beschädigt werden.
+
+## Automatische Funktionsübertragung
+Wenn eine Komponente durch eine neue ersetzt wird:
+
+1. **Funktionsanalyse**: Zuerst alle vorhandenen Funktionen der ursprünglichen Komponente identifizieren
+2. **API-Anbindungen**: Alle API-Routen, Event-Handler und Datenflüsse dokumentieren
+3. **Funktionsübertragung**: Alle identifizierten Funktionen in die neue Komponente übertragen
+4. **Verifikation**: Sicherstellen, dass die neue Komponente dieselbe Funktionalität bietet
+
+## Beispiel-Workflow
+```
+User: "Ersetze das AI-Input-Field auf der {page} mit der neuen Komponente New-InputField.tsx"
+
+Assistant: 
+1. Analysiere die ursprüngliche Komponente auf:
+   - API-Routen (z.B. /api/chat)
+   - Event-Handler (onSubmit, onChange, etc.)
+   - State-Management
+   - Props und Interfaces
+   - Externe Abhängigkeiten
+
+2. Übertrage alle Funktionen in New-InputField.tsx:
+   - API-Anbindung beibehalten
+   - Event-Handler implementieren
+   - State-Logik übertragen
+   - Props-Interface definieren
+
+3. Stelle sicher, dass die neue Komponente:
+   - Dieselben API-Endpunkte verwendet
+   - Dieselben Events auslöst
+   - Dieselben Daten verarbeitet
+   - Kompatibel mit bestehenden Abhängigkeiten ist
+```
+
+## Wichtige Punkte
+- **Niemals** Funktionalität entfernen ohne explizite Anweisung
+- **Immer** vorhandene API-Anbindungen in neue Komponenten übertragen
+- **Sicherstellen**, dass Event-Handler und State-Management erhalten bleiben
+- **Testen**, dass die neue Komponente dieselbe Funktionalität bietet
+- **Dokumentieren**, welche Funktionen übertragen wurden
+
+## Dateien-Referenzen
+- UI-Komponenten: [src/components/](mdc:src/components/)
+- API-Routen: [src/app/api/](mdc:src/app/api/)
+- Hooks und Utilities: [src/hooks/](mdc:src/hooks/) und [src/lib/](mdc:src/lib/)
+
+## Fehlerbehandlung
+Falls eine Funktionalität nicht übertragen werden kann:
+1. Benutzer informieren
+2. Alternative Lösungen vorschlagen
+3. Kompatibilitätsprobleme dokumentieren
+4. Schrittweise Migration anbieten

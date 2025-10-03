@@ -42,7 +42,7 @@ export const Thread: FC = () => {
             ["--thread-max-width" as string]: "44rem",
           }}
         >
-          <ThreadPrimitive.Viewport className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-4">
+          <ThreadPrimitive.Viewport className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-auto px-4 scrollbar-hide">
             <ThreadWelcome />
 
             <ThreadPrimitive.Messages

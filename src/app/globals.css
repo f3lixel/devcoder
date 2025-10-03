@@ -188,6 +188,15 @@
   }
 }
 
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar { 
+  display: none;  /* Safari and Chrome */
+}
+
 /* Reusable glass utilities */
 @utility glass-panel {
   @apply bg-white/8 dark:bg-white/8 backdrop-blur-2xl ring-1 ring-white/10 shadow-[0_12px_60px_rgba(0,0,0,0.55)];
