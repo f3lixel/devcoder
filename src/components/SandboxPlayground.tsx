@@ -196,9 +196,16 @@ export default function SandboxPlayground({
               </button>
             </div>
 
-            {/* Code tab switch only */}
+            {/* Eye / Code tab switches */}
             <div className="flex items-center">
               <div className="inline-flex h-8 items-center rounded-md border border-white/10 bg-[#141414] overflow-hidden">
+                <SandboxTabsTrigger value="preview" className="h-8 w-10 p-0 rounded-none text-neutral-400 data-[state=active]:text-white data-[state=active]:bg-[#0b0b0b]">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-eye-icon lucide-eye">
+                    <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                </SandboxTabsTrigger>
+                <div className="h-8 w-px bg-white/10" />
                 <SandboxTabsTrigger value="code" className="h-8 w-10 p-0 rounded-none text-neutral-400 data-[state=active]:text-white data-[state=active]:bg-[#0b0b0b]">
                   <Code2 size={16} />
                 </SandboxTabsTrigger>
@@ -240,6 +247,17 @@ export default function SandboxPlayground({
             </div>
           </div>
           <SandboxLayout>
+            <SandboxTabsContent value="preview" className="relative">
+              {!previewReady && (
+                <div className="absolute inset-0 z-10 grid place-items-center bg-background/40 backdrop-blur-sm">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-md glass-panel">
+                    <Loader size={16} />
+                    <span className="text-sm text-foreground/80">Starting preview…</span>
+                  </div>
+                </div>
+              )}
+              <SandboxPreview />
+            </SandboxTabsContent>
             <SandboxTabsContent value="code" className="h-full w-full p-0 m-0">
               <PanelGroup direction="horizontal" className="h-full w-full p-0 m-0" style={{ gap: 0 }}>
                 <Panel defaultSize={25} minSize={15} className="h-full p-0 m-0">
