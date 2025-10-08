@@ -247,7 +247,7 @@ export default function SandboxPlayground({
             </div>
           </div>
           <SandboxLayout>
-            <SandboxTabsContent value="preview" className="relative">
+            <SandboxTabsContent value="preview">
               {!previewReady && (
                 <div className="absolute inset-0 z-10 grid place-items-center bg-background/40 backdrop-blur-sm">
                   <div className="flex items-center gap-2 px-3 py-2 rounded-md glass-panel">

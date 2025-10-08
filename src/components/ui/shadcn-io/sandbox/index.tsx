@@ -29,6 +29,31 @@ import {
   useState,
 } from 'react';
 import { cn } from '@/lib/utils';
+import StatusBadge from '@/components/StatusBadge';
+import {
+  Archive,
+  Book,
+  Braces,
+  ChevronDown,
+  ChevronRight as ChevronRightIcon,
+  Database,
+  File as FileIcon,
+  FileCode,
+  FileJson,
+  FileText,
+  Folder as FolderIcon,
+  FolderOpen,
+  GitCommitVertical,
+  Key,
+  Lock,
+  FileType2,
+  Package,
+  Palette,
+  Settings,
+  Shield,
+  Terminal,
+} from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 export type SandboxProviderProps = SandpackProviderProps & { className?: string };
 
@@ -132,16 +157,46 @@ export type SandboxTabsListProps = HTMLAttributes<HTMLDivElement>;
 export const SandboxTabsList = ({
   className,
   ...props
-}: SandboxTabsListProps): ReactNode => (
-  <div
-    className={cn(
-      'inline-flex w-full shrink-0 items-center justify-start border-b bg-secondary p-2 text-muted-foreground',
-      className
-    )}
-    role="tablist"
-    {...props}
-  />
-);
+}: SandboxTabsListProps): ReactNode => {
+  // Render a right-aligned status strip using Sandpack context
+  const sandpackCtx = (() => {
+    try {
+      // Using hook only in render of this component
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      return useSandpack();
+    } catch {
+      return undefined;
+    }
+  })();
+
+  const isRunning = Boolean(sandpackCtx?.sandpack?.status === 'running');
+  const hasError = Boolean((sandpackCtx as any)?.sandpack?.error);
+
+  return (
+    <div
+      className={cn(
+        'inline-flex w-full shrink-0 items-center justify-between border-b bg-secondary p-2 text-muted-foreground',
+        className
+      )}
+      role="tablist"
+      {...props}
+    >
+      <div className="flex items-center gap-1">
+        {props.children}
+      </div>
+      <div className="flex items-center gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div>
+              <StatusBadge status={isRunning ? 'running' : hasError ? 'error' : 'idle'} label={isRunning ? 'Preview läuft' : hasError ? 'Preview Fehler' : 'Preview bereit'} />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Vorschau-Status</TooltipContent>
+        </Tooltip>
+      </div>
+    </div>
+  );
+};
 
 export type SandboxTabsTriggerProps = Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
@@ -161,18 +216,26 @@ export const SandboxTabsTrigger = ({
     setSelectedTab(value);
   }, [setSelectedTab, value]);
 
+  const label = value === 'preview' ? 'Preview (Alt+P)' : value === 'code' ? 'Code (Alt+C)' : value === 'console' ? 'Console (Alt+L)' : value;
+
   return (
-    <button
-      aria-selected={selectedTab === value}
-      className={cn(
-        'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1 font-medium text-sm ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow',
-        className
-      )}
-      data-state={selectedTab === value ? 'active' : 'inactive'}
-      onClick={handleClick}
-      role="tab"
-      {...props}
-    />
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          aria-selected={selectedTab === value}
+          title={label}
+          className={cn(
+            'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1 font-medium text-sm ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow',
+            className
+          )}
+          data-state={selectedTab === value ? 'active' : 'inactive'}
+          onClick={handleClick}
+          role="tab"
+          {...props}
+        />
+      </TooltipTrigger>
+      <TooltipContent side="bottom">{label}</TooltipContent>
+    </Tooltip>
   );
 };
 
@@ -191,10 +254,10 @@ export const SandboxTabsContent = ({
     <div
       aria-hidden={selectedTab !== value}
       className={cn(
-        'flex-1 overflow-y-auto ring-offset-background transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        'overflow-y-auto ring-offset-background transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
         selectedTab === value
-          ? 'h-auto w-auto opacity-100'
-          : 'pointer-events-none absolute h-0 w-0 opacity-0',
+          ? 'flex-1 h-full w-full opacity-100'
+          : 'flex-none pointer-events-none absolute h-0 w-0 opacity-0',
         className
       )}
       data-state={selectedTab === value ? 'active' : 'inactive'}
@@ -237,7 +300,7 @@ export const SandboxPreview = ({
   ...props
 }: SandboxPreviewProps): ReactNode => (
   <SandpackPreview
-    className={cn('h-full', className)}
+    className={cn('h-full w-full', className)}
     showOpenInCodeSandbox={showOpenInCodeSandbox}
     {...props}
   />
@@ -259,7 +322,7 @@ export const SandboxFileExplorer = ({
   />
 );
 
-// Custom: Codicon-based File Explorer mirroring Windsurf/VS Code explorer icons
+// Custom: File Explorer with Lucide icons
 type TreeNode = {
   name: string;
   path: string;
@@ -304,20 +367,20 @@ const getExt = (name: string): string => {
 const iconByFilename = (name: string): string | undefined => {
   const n = name.toLowerCase();
   // packages and locks
-  if (n === 'package.json') return 'codicon-symbol-package';
-  if (n === 'package-lock.json' || n === 'yarn.lock' || n === 'pnpm-lock.yaml') return 'codicon-lock';
+  if (n === 'package.json') return 'package';
+  if (n === 'package-lock.json' || n === 'yarn.lock' || n === 'pnpm-lock.yaml') return 'lock';
   // docs
-  if (n === 'readme' || n === 'readme.md' || n === 'changelog.md' || n === 'license') return 'codicon-book';
+  if (n === 'readme' || n === 'readme.md' || n === 'changelog.md' || n === 'license') return 'book';
   // env & git
-  if (n.startsWith('.env')) return 'codicon-key';
-  if (n.startsWith('.git')) return 'codicon-git-commit';
+  if (n.startsWith('.env')) return 'key';
+  if (n.startsWith('.git')) return 'git-commit';
   // config files
-  if (n === 'tsconfig.json' || n === 'jsconfig.json') return 'codicon-gear';
-  if (n.startsWith('.eslintrc')) return 'codicon-gear';
-  if (n.startsWith('.prettierrc')) return 'codicon-gear';
-  if (n === '.editorconfig') return 'codicon-gear';
-  if (n === '.npmrc' || n === '.nvmrc') return 'codicon-gear';
-  if (n === 'dockerfile' || n.startsWith('docker-compose')) return 'codicon-gear';
+  if (n === 'tsconfig.json' || n === 'jsconfig.json') return 'settings';
+  if (n.startsWith('.eslintrc')) return 'settings';
+  if (n.startsWith('.prettierrc')) return 'settings';
+  if (n === '.editorconfig') return 'settings';
+  if (n === '.npmrc' || n === '.nvmrc') return 'settings';
+  if (n === 'dockerfile' || n.startsWith('docker-compose')) return 'settings';
   return undefined;
 };
 
@@ -326,29 +389,29 @@ const iconByExt = (ext: string): string | undefined => {
     // docs/markdown
     case '.md':
     case '.markdown':
-      return 'codicon-markdown';
+      return 'markdown';
     // data/config
     case '.json':
     case '.jsonc':
-      return 'codicon-json';
+      return 'json';
     case '.yml':
     case '.yaml':
-      return 'codicon-file';
+      return 'file';
     case '.toml':
     case '.ini':
-      return 'codicon-gear';
+      return 'settings';
     // markup/styles
     case '.html':
     case '.htm':
-      return 'codicon-file-code';
+      return 'file-code';
     case '.xml':
-      return 'codicon-file-code';
+      return 'file-code';
     case '.css':
     case '.scss':
     case '.sass':
     case '.less':
     case '.styl':
-      return 'codicon-symbol-color';
+      return 'palette';
     // code
     case '.js':
     case '.jsx':
@@ -372,7 +435,7 @@ const iconByExt = (ext: string): string | undefined => {
     case '.kt':
     case '.swift':
     case '.scala':
-      return 'codicon-file-code';
+      return 'file-code';
     // scripts
     case '.sh':
     case '.bash':
@@ -380,19 +443,19 @@ const iconByExt = (ext: string): string | undefined => {
     case '.bat':
     case '.cmd':
     case '.ps1':
-      return 'codicon-terminal';
+      return 'terminal';
     // database / queries / data
     case '.sql':
-      return 'codicon-database';
+      return 'database';
     case '.csv':
     case '.tsv':
-      return 'codicon-table';
+      return 'file-text';
     // text/docs
     case '.txt':
     case '.log':
-      return 'codicon-file-text';
+      return 'file-text';
     case '.pdf':
-      return 'codicon-file';
+      return 'file';
     // images/media
     case '.png':
     case '.jpg':
@@ -403,7 +466,7 @@ const iconByExt = (ext: string): string | undefined => {
     case '.ico':
     case '.bmp':
     case '.tiff':
-      return 'codicon-file';
+      return 'file';
     // video/audio
     case '.mp4':
     case '.webm':
@@ -414,7 +477,7 @@ const iconByExt = (ext: string): string | undefined => {
     case '.wav':
     case '.flac':
     case '.ogg':
-      return 'codicon-file';
+      return 'file';
     // archives
     case '.zip':
     case '.tar':
@@ -422,10 +485,10 @@ const iconByExt = (ext: string): string | undefined => {
     case '.tgz':
     case '.rar':
     case '.7z':
-      return 'codicon-archive';
+      return 'archive';
     // locks/keys
     case '.lock':
-      return 'codicon-lock';
+      return 'lock';
   }
   return undefined;
 };
@@ -435,7 +498,7 @@ const iconByFolderName = (name: string, open: boolean): string => {
   // Keep base folder icons for consistency; reserved for future special cases
   switch (n) {
     case 'node_modules':
-      return open ? 'codicon-folder-opened' : 'codicon-folder';
+      return open ? 'folder-open' : 'folder';
     case 'src':
     case 'lib':
     case 'public':
@@ -445,9 +508,9 @@ const iconByFolderName = (name: string, open: boolean): string => {
     case 'scripts':
     case 'tests':
     case '__tests__':
-      return open ? 'codicon-folder-opened' : 'codicon-folder';
+      return open ? 'folder-open' : 'folder';
     default:
-      return open ? 'codicon-folder-opened' : 'codicon-folder';
+      return open ? 'folder-open' : 'folder';
   }
 };
 
@@ -459,7 +522,49 @@ const codiconFor = (node: TreeNode, open: boolean): string => {
   if (byName) return byName;
   const byExt = iconByExt(getExt(name));
   if (byExt) return byExt;
-  return 'codicon-file';
+  return 'file';
+};
+
+// Map string keys to Lucide components
+const renderLucide = (name: string, open?: boolean): ReactNode => {
+  const size = 16;
+  switch (name) {
+    case 'package':
+      return <Package size={size} />;
+    case 'lock':
+      return <Lock size={size} />;
+    case 'book':
+      return <Book size={size} />;
+    case 'key':
+      return <Key size={size} />;
+    case 'git-commit':
+      return <GitCommitVertical size={size} />;
+    case 'settings':
+      return <Settings size={size} />;
+    case 'markdown':
+      return <FileType2 size={size} />;
+    case 'json':
+      return <FileJson size={size} />;
+    case 'file-code':
+      return <FileCode size={size} />;
+    case 'palette':
+      return <Palette size={size} />;
+    case 'terminal':
+      return <Terminal size={size} />;
+    case 'database':
+      return <Database size={size} />;
+    case 'file-text':
+      return <FileText size={size} />;
+    case 'archive':
+      return <Archive size={size} />;
+    case 'folder-open':
+      return <FolderOpen size={size} />;
+    case 'folder':
+      return <FolderIcon size={size} />;
+    case 'file':
+    default:
+      return <FileIcon size={size} />;
+  }
 };
 
 export type CodiconFileExplorerProps = {
@@ -488,19 +593,24 @@ export const CodiconFileExplorer = ({ className }: CodiconFileExplorerProps): Re
 
     if (node.path !== '/' && !node.isDir) {
       return (
-        <li key={node.path} className={cn('px-2 py-1 text-sm cursor-pointer flex items-center gap-2 rounded-md hover:bg-secondary/50', isActive && 'bg-secondary/70 text-foreground')}
-            onClick={() => openFile(node.path)}>
-          <i className={cn('codicon', iconClass, 'text-[16px] leading-none')} aria-hidden />
-          <span className="truncate">{node.name}</span>
-        </li>
+        <Tooltip key={node.path}>
+          <TooltipTrigger asChild>
+            <li className={cn('px-0 py-1 text-sm cursor-pointer flex items-center gap-2 rounded-md hover:bg-secondary/50 transition-[transform,background] will-change-transform motion-safe:hover:translate-x-[1px]', isActive && 'bg-secondary/70 text-foreground')}
+                onClick={() => openFile(node.path)}>
+              {renderLucide(iconClass)}
+              <span className="truncate">{node.name}</span>
+            </li>
+          </TooltipTrigger>
+          <TooltipContent side="right">{node.path}</TooltipContent>
+        </Tooltip>
       );
     }
 
     if (node.path !== '/' && node.isDir) {
       return (
-        <li key={node.path} className="px-2 py-1 text-sm">
+        <li key={node.path} className="px-0 py-1 text-sm">
           <div className="flex items-center gap-2 cursor-pointer select-none" onClick={() => toggle(node.path)}>
-            <i className={cn('codicon', iconClass, 'text-[16px] leading-none')} aria-hidden />
+            {renderLucide(iconClass, isOpen)}
             <span className="font-medium">{node.name}</span>
           </div>
           {isOpen && hasChildren && (
@@ -516,7 +626,7 @@ export const CodiconFileExplorer = ({ className }: CodiconFileExplorerProps): Re
 
     // root
     return (
-      <ul className={cn('h-full overflow-auto p-2 space-y-0.5', className)}>
+      <ul className={cn('h-full overflow-auto p-0 m-0 list-none space-y-0.5', className)}>
         {node.children && Object.values(node.children)
           .sort((a, b) => Number(b.isDir) - Number(a.isDir) || a.name.localeCompare(b.name))
           .map((child) => (
