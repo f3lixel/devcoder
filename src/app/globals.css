@@ -212,3 +212,28 @@
 .xterm .xterm-rows {
   padding: 8px 10px;
 }
+
+/* === Sandpack / CodeMirror: linke Einrückungen entfernen === */
+.sp-layout, .sp-code-editor, .sp-cm, .cm-editor, .cm-scroller {
+  padding-left: 0 !important;
+  margin-left: 0 !important;
+}
+/* Gutter (Zeilennummern) bündig an Text, ohne Extra-Gap */
+.cm-gutters { margin-left: 0 !important; border-right: 1px solid rgba(255,255,255,0.06); }
+.cm-content { padding-left: 0 !important; }
+/* Minimale Sichtbarkeit für Caret am ganz linken Rand */
+.cm-line { padding-left: 0 !important; }
+
+/* === Sandpack Editor-Container: eventuelle Innenabstände killen === */
+.sp-wrapper, .sp-editor, .sp-code-editor .cm-theme, .sp-preview-container {
+  padding-left: 0 !important;
+  margin-left: 0 !important;
+}
+
+/* === Monaco-Fallback (falls verwendet) === */
+.monaco-editor .overflow-guard { padding-left: 0 !important; }
+.monaco-editor, .monaco-editor .margin, .monaco-editor .monaco-scrollable-element {
+  margin-left: 0 !important; padding-left: 0 !important;
+}
+/* Optional: Gutter schmal halten statt ganz entfernen */
+.monaco-editor .margin { width: 8px !important; }
