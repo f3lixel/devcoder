@@ -259,13 +259,13 @@ export default function SandboxPlayground({
               <SandboxPreview />
             </SandboxTabsContent>
             <SandboxTabsContent value="code" className="h-full w-full p-0 m-0">
-              <PanelGroup direction="horizontal" className="h-full w-full p-0 m-0">
+              <PanelGroup direction="horizontal" className="h-full w-full p-0 m-0" style={{ gap: 0 }}>
                 <Panel defaultSize={25} minSize={15} className="h-full p-0 m-0">
                   <CodiconFileExplorer />
                 </Panel>
                 <PanelResizeHandle className="w-1 bg-border data-[resize-handle-active]:bg-primary cursor-col-resize" />
                 <Panel minSize={25} className="h-full p-0 m-0">
-                  <PanelGroup direction="vertical" className="h-full p-0 m-0">
+                  <PanelGroup direction="vertical" className="h-full p-0 m-0" style={{ gap: 0 }}>
                     <Panel defaultSize={70} minSize={30} className="h-full p-0 m-0">
                       <SandboxCodeEditor showTabs className="!m-0 !p-0" />
                     </Panel>
