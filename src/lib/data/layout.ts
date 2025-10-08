@@ -1,4 +1,4 @@
-const STORAGE_KEY = "ai-vibe-divider-percent";
+const STORAGE_KEY = "ai-vibe-divider-percent-v2";
 
 export function loadDividerPercent(): number | null {
   if (typeof window === "undefined") return null;

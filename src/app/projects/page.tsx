@@ -1,8 +1,7 @@
 'use client';
 
 import ResizableSplit from "@/components/ResizableSplit";
-import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
-import { LayoutDashboard, Settings } from "lucide-react";
+import ProjectsSidebar from "@/components/ProjectsSidebar";
 import dynamic from "next/dynamic";
 import { useViewMode } from "@/components/view-mode-context";
 import { Suspense, useState, useMemo, useEffect, useCallback } from "react";
@@ -79,9 +78,16 @@ button:hover {
 
 export default function Home() {
   return (
-    <Suspense fallback={<div>Loading project...</div>}>
-      <HomeContent />
-    </Suspense>
+    <div className="h-[100vh] w-full overflow-hidden flex" style={{backgroundColor: "rgba(0, 0, 3, 1)"}}>
+      <div className="shrink-0">
+        <ProjectsSidebar />
+      </div>
+      <div className="flex-1 min-w-0">
+        <Suspense fallback={<div>Loading project...</div>}>
+          <HomeContent />
+        </Suspense>
+      </div>
+    </div>
   );
 }
 
@@ -168,23 +174,11 @@ function HomeContent() {
 
   return (
     <ResizableSplit
-      initialPercentLeft={40}
+      initialPercentLeft={30}
       minPercentLeft={20}
       left={
-        <div className="h-full p-3 pr-[35px] flex gap-3">
-          <Sidebar>
-            <SidebarBody className="justify-between gap-10">
-              <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-                <div className="mt-2 flex flex-col gap-2">
-                  {[{ label: "go to dashboard", href: "/", icon: (<LayoutDashboard className="text-neutral-300 h-5 w-5" />) },
-                    { label: "Settings", href: "#", icon: (<Settings className="text-neutral-300 h-5 w-5" />) }].map((link, idx) => (
-                    <SidebarLink key={idx} link={link as any} />
-                  ))}
-                </div>
-              </div>
-            </SidebarBody>
-          </Sidebar>
-          <div className="h-full flex-1 min-w-0 rounded-2xl">
+        <div className="h-full p-3 pr-2 flex pt-16 pb-0">
+          <div className="h-full flex-1 min-w-0 rounded-2xl overflow-hidden">
             <Suspense fallback={null}>
               {/* New AI Chat Interface */}
               <NewAIChat
@@ -194,13 +188,14 @@ function HomeContent() {
                 currentFile={currentFile}
                 terminalOutput={terminalOutput}
                 onFocusFile={handleFileSelect}
+                projectId={projectId || undefined}
               />
             </Suspense>
           </div>
         </div>
       }
       right={
-        <div className="h-full pl-0 pr-0">
+        <div className="h-full pt-16 pl-0 pr-0 pb-0">
           <SandboxPlayground 
             files={files} 
             onFilesChange={handleFileChange}

@@ -109,7 +109,7 @@ export default function ResizableSplit({
   );
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden" style={{ width: "100vw", justifyContent: "flex-start", alignItems: "center", backgroundColor: "rgba(0, 0, 3, 1)" }}>
+    <div className="flex h-screen overflow-hidden" style={{ width: "100%", justifyContent: "flex-start", alignItems: "center", backgroundColor: "rgba(0, 0, 3, 1)" }}>
       <div
         className="relative h-full"
         style={{ width: `${percentLeft}%` }}
@@ -150,8 +150,7 @@ export default function ResizableSplit({
       </motion.div>
 
       <div
-        className="relative h-full flex-1"
-        style={{ width: `${100 - percentLeft}%` }}
+        className="relative h-full flex-1 min-w-0"
       >
         {right}
       </div>

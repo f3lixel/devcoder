@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import Link, { type LinkProps } from "next/link";
+import Link from "next/link";
 import React, { useState, createContext, useContext } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
@@ -18,7 +18,9 @@ interface SidebarContextProps {
   animate: boolean;
 }
 
-const SidebarContext = createContext<SidebarContextProps | undefined>(undefined);
+const SidebarContext = createContext<SidebarContextProps | undefined>(
+  undefined
+);
 
 export const useSidebar = () => {
   const context = useContext(SidebarContext);
@@ -87,12 +89,7 @@ export const DesktopSidebar = ({
   return (
     <motion.div
       className={cn(
-        // Glassmorphism: translucent dark panel with stronger blur, highlight, ring
-        "relative h-full px-4 py-4 hidden md:flex md:flex-col w-[300px] flex-shrink-0 rounded-2xl",
-        "bg-white/8 dark:bg-white/8 backdrop-blur-2xl shadow-[0_12px_60px_rgba(0,0,0,0.55)] ring-1 ring-white/10",
-        // Subtle sheen overlay
-        "before:absolute before:inset-0 before:rounded-2xl before:pointer-events-none",
-        "before:bg-[radial-gradient(140%_120%_at_0%_0%,rgba(255,255,255,0.22)_0%,rgba(255,255,255,0.10)_35%,transparent_60%)] before:opacity-70",
+        "h-screen px-4 py-4 hidden md:flex md:flex-col w-[300px] flex-shrink-0 bg-[rgba(0,0,3,1)]",
         className
       )}
       animate={{
@@ -117,10 +114,8 @@ export const MobileSidebar = ({
     <>
       <div
         className={cn(
-          // Top bar (mobile) — stronger transparent bar
-          "relative h-10 px-4 py-4 flex flex-row md:hidden items-center justify-between w-full rounded-2xl",
-          "bg-white/8 dark:bg-white/8 backdrop-blur-2xl shadow-[0_8px_30px_rgba(0,0,0,0.45)] ring-1 ring-white/10",
-          "before:absolute before:inset-0 before:rounded-2xl before:pointer-events-none before:bg-[radial-gradient(140%_120%_at_0%_0%,rgba(255,255,255,0.22)_0%,rgba(255,255,255,0.10)_35%,transparent_60%)] before:opacity-70"
+          "h-10 px-4 py-4 flex flex-row md:hidden items-center justify-between bg-neutral-100 dark:bg-neutral-800 w-full",
+          className
         )}
         {...props}
       >
@@ -136,11 +131,12 @@ export const MobileSidebar = ({
               initial={{ x: "-100%", opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: "-100%", opacity: 0 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
+              transition={{
+                duration: 0.3,
+                ease: "easeInOut",
+              }}
               className={cn(
-                // Fullscreen drawer with stronger glass backdrop
-                "fixed h-full w-full inset-0 p-10 z-[100] flex flex-col justify-between",
-                "bg-black/50 backdrop-blur-2xl",
+                "fixed h-full w-full inset-0 bg-white dark:bg-neutral-900 p-10 z-[100] flex flex-col justify-between",
                 className
               )}
             >
@@ -159,37 +155,36 @@ export const MobileSidebar = ({
   );
 };
 
-export const SidebarLink = ({
-  link,
-  className,
-  ...props
-}: {
+export const SidebarLink = ({ link, className, onClick, href, ...rest }: {
   link: Links;
   className?: string;
-  props?: LinkProps;
-}) => {
+  onClick?: React.MouseEventHandler<HTMLAnchorElement>;
+  href?: any;
+} & Omit<React.ComponentProps<typeof Link>, "href" | "children">) => {
   const { open, animate } = useSidebar();
   return (
     <Link
-      href={link.href}
+      href={href ?? link.href}
       className={cn(
         "flex items-center justify-start gap-2 group/sidebar py-2",
         className
       )}
-      {...props}
+      onClick={onClick}
+      {...rest}
     >
-      {link.icon}
+      <div className="h-5 w-5 shrink-0 flex items-center justify-center">
+        {link.icon}
+      </div>
       <motion.span
         animate={{
           display: animate ? (open ? "inline-block" : "none") : "inline-block",
           opacity: animate ? (open ? 1 : 0) : 1,
         }}
-        className="text-white/90 text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
+        className="text-neutral-700 dark:text-neutral-200 text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
       >
         {link.label}
       </motion.span>
     </Link>
   );
 };
-
 

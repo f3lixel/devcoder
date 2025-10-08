@@ -7,13 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import clsx from 'clsx'
-import {
-  TbCheck,
-  TbPencil,
-  TbSettings,
-  TbTrash,
-  TbX,
-} from 'react-icons/tb'
+import { Check, Pencil, Settings, Trash2, X } from 'lucide-react'
 import { useProject } from '@/components/project-context'
 
 export const Component = () => {
@@ -155,13 +149,13 @@ export const Component = () => {
                     setEditing(false)
                   }}
                 >
-                  <TbCheck />
+                  <Check size={16} />
                 </button>
                 <button
                   className="rounded bg-neutral-300 p-[3px] text-neutral-700 hover:bg-neutral-400/50 dark:bg-neutral-600 dark:text-neutral-100 dark:hover:bg-neutral-500"
                   onClick={() => setEditing(false)}
                 >
-                  <TbX />
+                  <X size={16} />
                 </button>
               </div>
             </motion.div>
@@ -178,7 +172,7 @@ export const Component = () => {
               }}
             >
               <span className="ml-2">rename project</span>
-              <TbPencil className="absolute right-0 mr-2 text-[16px]" />
+              <Pencil className="absolute right-0 mr-2" size={16} />
             </motion.button>
           )}
         </AnimatePresence>
@@ -186,7 +180,7 @@ export const Component = () => {
       </div>
       <button className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-[14px] hover:bg-white/10">
         Project Settings
-        <TbSettings className="text-[16px]" />
+        <Settings size={16} />
       </button>
       <hr className="w-full border-white/10" />
       <button
@@ -220,7 +214,7 @@ export const Component = () => {
             </motion.span>
           )}
         </AnimatePresence>
-        <TbTrash className="text-[16px]" />
+        <Trash2 size={16} />
         <div className="absolute left-0 hidden h-full w-full bg-red-500/15 transition-colors group-hover:block">
           <motion.div
             className="h-full bg-red-500/25"

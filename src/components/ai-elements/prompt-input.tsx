@@ -543,6 +543,8 @@ export const PromptInputTextarea = ({
         "field-sizing-content bg-transparent dark:bg-transparent",
         "max-h-48 min-h-16",
         "focus-visible:ring-0",
+        // Breiteres Eingabefeld durch maximale Breite und zentrierte Innenabstände
+        "mx-auto w-[min(100%,900px)]",
         className
       )}
       name="message"

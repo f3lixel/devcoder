@@ -11,7 +11,7 @@ import Link from "next/link"
 
 export default function AppHeader() {
   const pathname = usePathname()
-  if (pathname === "/dashboard" || pathname === "/") return null
+  if (pathname === "/dashboard") return null
 
   // Try to extract projectId from /projects/[id] routes
   const match = pathname.match(/^\/projects\/([^\/]+)/)
@@ -21,7 +21,6 @@ export default function AppHeader() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 h-16 bg-transparent overflow-visible">
       <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
-        <Image src="/logo.svg" alt="Logo" width={40} height={40} className="h-10 w-auto" priority />
         <HeaderProjectName />
       </div>
       <div className="mx-auto flex h-full max-w-7xl items-center justify-end px-4 pl-40 md:pl-48">

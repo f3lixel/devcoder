@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import type { UIMessage } from "ai";
 import { nanoid } from "nanoid";
 import { usePathname, useSearchParams } from "next/navigation";
+import StatusBadge from "@/components/StatusBadge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface NewAIChatProps {
   onNewFiles?: (files: Array<{ path: string; content: string }>) => void;
@@ -270,7 +272,7 @@ export function NewAIChat({
   }, []);
 
   return (
-    <div className="flex h-full flex-col bg-background">
+    <div className="flex h-full flex-col" style={{ backgroundColor: "rgba(0, 0, 3, 1)" }}>
       <Conversation className="flex-1">
         <ConversationContent className="space-y-6">
           {messages.length === 0 ? (
@@ -337,7 +339,12 @@ export function NewAIChat({
         <ConversationScrollButton />
       </Conversation>
 
-      <div className="border-t p-4">
+      <div className="border-t px-0 py-4">
+        <div className="mb-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <StatusBadge status={status === "error" ? "error" : status === "streaming" ? "running" : "idle"} label={status === "error" ? "AI Fehler" : status === "streaming" ? "AI denkt…" : "AI bereit"} />
+          </div>
+        </div>
         <PromptInput
           accept="image/*"
           multiple
@@ -366,11 +373,18 @@ export function NewAIChat({
               {/* Add attachment and other tools here if needed */}
             </PromptInputTools>
             
-            <PromptInputSubmit
-              status={status === "streaming" ? "streaming" : status === "error" ? "error" : undefined}
-              disabled={status === "streaming"}
-              onClick={status === "streaming" ? handleCancel : undefined}
-            />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="motion-safe:hover:-translate-y-px transition-transform">
+                  <PromptInputSubmit
+                    status={status === "streaming" ? "streaming" : status === "error" ? "error" : undefined}
+                    disabled={status === "streaming"}
+                    onClick={status === "streaming" ? handleCancel : undefined}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">Senden (Enter) · Abbrechen (Esc)</TooltipContent>
+            </Tooltip>
           </PromptInputToolbar>
         </PromptInput>
       </div>
