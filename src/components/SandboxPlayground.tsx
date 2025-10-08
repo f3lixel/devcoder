@@ -170,7 +170,7 @@ export default function SandboxPlayground({
   }, [onFileSelect]);
 
   return (
-    <div className="h-full w-full p-0 m-0">
+    <div className="felixel-editor-tight h-full w-full p-0 m-0">
       <SandboxProvider
         template="react"
         files={normalizedFiles}

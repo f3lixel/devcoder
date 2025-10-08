@@ -237,3 +237,15 @@
 }
 /* Optional: Gutter schmal halten statt ganz entfernen */
 .monaco-editor .margin { width: 8px !important; }
+
+/* Scope: Nur im Editor strikte Linksbündigkeit erzwingen */
+.felixel-editor-tight :where(.sp-layout, .sp-code-editor, .sp-cm, .cm-editor, .cm-scroller,
+  .cm-content, .cm-gutters, .cm-line, .sp-wrapper, .sp-editor, .sp-code-editor .cm-theme,
+  .sp-preview-container, .monaco-editor, .monaco-editor .margin, .monaco-editor .overflow-guard,
+  .monaco-editor .monaco-scrollable-element) {
+  padding-left: 0 !important;
+  margin-left: 0 !important;
+}
+.felixel-editor-tight :where(.cm-gutters) {
+  border-right: 1px solid rgba(255,255,255,0.06);
+}
