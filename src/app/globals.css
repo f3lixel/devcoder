@@ -221,3 +221,46 @@
 .xterm .xterm-rows {
   padding: 8px 10px;
 }
+
+/* === Sandpack / CodeMirror: linke Einrückungen entfernen === */
+.sp-layout, .sp-code-editor, .sp-cm, .cm-editor, .cm-scroller {
+  padding-left: 0 !important;
+  margin-left: 0 !important;
+}
+/* Gutter (Zeilennummern) bündig an Text, ohne Extra-Gap */
+.cm-gutters { margin-left: 0 !important; border-right: 1px solid rgba(255,255,255,0.06); }
+.cm-content { padding-left: 0 !important; }
+/* Minimale Sichtbarkeit für Caret am ganz linken Rand */
+.cm-line { padding-left: 0 !important; }
+
+/* === Sandpack Editor-Container: eventuelle Innenabstände killen === */
+.sp-wrapper, .sp-editor, .sp-code-editor .cm-theme, .sp-preview-container {
+  padding-left: 0 !important;
+  margin-left: 0 !important;
+}
+
+/* === Monaco-Fallback (falls verwendet) === */
+.monaco-editor .overflow-guard { padding-left: 0 !important; }
+.monaco-editor, .monaco-editor .margin, .monaco-editor .monaco-scrollable-element {
+  margin-left: 0 !important; padding-left: 0 !important;
+}
+/* Optional: Gutter schmal halten statt ganz entfernen */
+.monaco-editor .margin { width: 8px !important; }
+
+/* Scope: Nur im Editor strikte Linksbündigkeit erzwingen */
+.felixel-editor-tight :where(.sp-layout, .sp-code-editor, .sp-cm, .cm-editor, .cm-scroller,
+  .cm-content, .cm-gutters, .cm-line, .sp-wrapper, .sp-editor, .sp-code-editor .cm-theme,
+  .sp-preview-container, .monaco-editor, .monaco-editor .margin, .monaco-editor .overflow-guard,
+  .monaco-editor .monaco-scrollable-element) {
+  padding-left: 0 !important;
+  margin-left: 0 !important;
+}
+.felixel-editor-tight :where(.cm-gutters) {
+  border-right: 1px solid rgba(255,255,255,0.06);
+}
+
+/* Sandpack/ResizablePanels: alle Gaps im Editor abschalten */
+.felixel-editor-tight :where(.sp-layout, .sp-editor, .sp-wrapper) { gap: 0 !important; }
+.felixel-editor-tight :where([data-panel-group]) { gap: 0 !important; }
+.felixel-editor-tight :where([data-panel]) { margin: 0 !important; }
+.felixel-editor-tight :where([data-panel-resize-handle]) { margin: 0 !important; }
