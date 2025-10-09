@@ -1,8 +1,9 @@
 "use client";
 
 import React from "react";
-import { ChevronDown, ChevronRight, File, Folder, FolderOpen, Code, Braces, Image as ImageIcon, Package, Settings, BookText, FileText } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FileTreeIcon } from "@/components/filetree/FileTreeIcon";
 
 export type FileNode = {
   type: "file" | "folder";
@@ -11,41 +12,7 @@ export type FileNode = {
   children?: FileNode[];
 };
 
-function fileIcon(name: string): { el: React.ReactNode; className?: string } {
-  const lower = name.toLowerCase();
-  const ext = lower.split(".").pop() || "";
-  // special file names
-  if (lower === "package.json") return { el: <Package size={16} />, className: "text-amber-400" };
-  if (lower === "readme.md") return { el: <BookText size={16} />, className: "text-purple-300" };
-  if (lower.startsWith(".env")) return { el: <Settings size={16} />, className: "text-zinc-400" };
-  if (lower === ".gitignore") return { el: <Settings size={16} />, className: "text-zinc-400" };
-
-  switch (ext) {
-    case "ts":
-    case "tsx":
-      return { el: <Code size={16} />, className: "text-sky-400" };
-    case "js":
-    case "jsx":
-      return { el: <Code size={16} />, className: "text-yellow-300" };
-    case "json":
-      return { el: <Braces size={16} />, className: "text-emerald-400" };
-    case "css":
-      return { el: <FileText size={16} />, className: "text-pink-400" };
-    case "html":
-      return { el: <Code size={16} />, className: "text-orange-400" };
-    case "md":
-    case "mdx":
-      return { el: <BookText size={16} />, className: "text-purple-300" };
-    case "png":
-    case "jpg":
-    case "jpeg":
-    case "gif":
-    case "svg":
-      return { el: <ImageIcon size={16} />, className: "text-teal-300" };
-    default:
-      return { el: <File size={16} />, className: "text-zinc-400" };
-  }
-}
+// Icons are provided by FileTreeIcon using Iconify (files) and Lucide (folders)
 
 type FileTreeProps = {
   tree: FileNode[];
@@ -110,7 +77,6 @@ function TreeItem({
   const isOpen = isFolder && expanded.has(node.path);
   const isSelected = node.path === selectedPath;
 
-  const fileMeta = !isFolder ? fileIcon(node.name) : null;
 
   return (
     <div>
@@ -137,11 +103,7 @@ function TreeItem({
         )}
 
         <span className="flex items-center gap-2 text-[13px] text-zinc-300 group-hover:text-cyan-100">
-          {isFolder ? (
-            isOpen ? <FolderOpen size={16} className="text-cyan-300/80" /> : <Folder size={16} className="text-cyan-300/80" />
-          ) : (
-            <span className={cn(fileMeta?.className)}>{fileMeta?.el}</span>
-          )}
+          <FileTreeIcon name={node.name} isDir={isFolder} isOpen={isOpen} />
           <span className="truncate">{node.name}</span>
         </span>
       </button>

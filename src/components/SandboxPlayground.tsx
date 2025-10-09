@@ -9,6 +9,8 @@ import {
   CodiconFileExplorer,
   SandboxCodeEditor,
   SandboxPreview,
+  SandboxEditorTabs,
+  SandboxEditorBreadcrumbs,
 } from '@/components/ui/shadcn-io/sandbox/index';
 import TerminalPane from '@/components/TerminalPane'
 import type { SandpackProviderProps } from '@codesandbox/sandpack-react';
@@ -266,8 +268,12 @@ export default function SandboxPlayground({
                 <PanelResizeHandle className="w-1 bg-border data-[resize-handle-active]:bg-primary cursor-col-resize" />
                 <Panel minSize={25} className="h-full p-0 m-0">
                   <PanelGroup direction="vertical" className="h-full p-0 m-0" style={{ gap: 0 }}>
-                    <Panel defaultSize={70} minSize={30} className="h-full p-0 m-0">
-                      <SandboxCodeEditor showTabs className="!m-0 !p-0" />
+                    <Panel defaultSize={70} minSize={30} className="h-full p-0 m-0 flex flex-col">
+                      <SandboxEditorTabs />
+                      <SandboxEditorBreadcrumbs />
+                      <div className="flex-1 min-h-0">
+                        <SandboxCodeEditor showTabs={false} className="!m-0 !p-0" />
+                      </div>
                     </Panel>
                     <PanelResizeHandle className="h-1 bg-border data-[resize-handle-active]:bg-primary cursor-row-resize" />
                     <Panel minSize={20} className="h-full glass-panel rounded-md relative p-0 m-0">

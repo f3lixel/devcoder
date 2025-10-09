@@ -18,6 +18,8 @@
     "@assistant-ui/react-markdown": "^0.11.0",
     "@codesandbox/sandpack-react": "^2.20.0",
     "@headlessui/react": "^2.2.7",
+    "@iconify-json/vscode-icons": "^1.2.31",
+    "@iconify/react": "^6.0.2",
     "@icons-pack/react-simple-icons": "^13.7.0",
     "@mastra/core": "^0.20.0",
     "@monaco-editor/react": "^4.7.0",

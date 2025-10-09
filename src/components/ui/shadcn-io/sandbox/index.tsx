@@ -54,6 +54,7 @@ import {
   Terminal,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { FileTreeIcon } from '@/components/filetree/FileTreeIcon';
 
 export type SandboxProviderProps = SandpackProviderProps & { className?: string };
 
@@ -278,6 +279,95 @@ export const SandboxCodeEditor = ({
       showTabs={showTabs}
       {...props}
     />
+  );
+};
+
+// Editor Tabs with icons (Iconify for files, Lucide for folders)
+export const SandboxEditorTabs = ({ className }: { className?: string }): ReactNode => {
+  const { sandpack } = useSandpack();
+
+  const openFiles = (sandpack as any)?.openFiles as string[] | undefined;
+  const activeFile = sandpack.activeFile as string | undefined;
+
+  const files = openFiles && openFiles.length > 0 ? openFiles : activeFile ? [activeFile] : [];
+
+  const onSelect = (path: string) => {
+    sandpack.openFile(path);
+  };
+
+  const onClose = (path: string) => {
+    const closeFile = (sandpack as any)?.closeFile as ((p: string) => void) | undefined;
+    if (closeFile) closeFile(path);
+  };
+
+  return (
+    <div className={cn('flex items-center gap-1 px-2 py-1 border-b border-border bg-secondary/60', className)}>
+      {files.map((path) => {
+        const name = path.split('/').filter(Boolean).pop() || path;
+        const isActive = path === activeFile;
+        return (
+          <button
+            key={path}
+            type="button"
+            onClick={() => onSelect(path)}
+            className={cn(
+              'group inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs',
+              'hover:bg-secondary/80',
+              isActive ? 'bg-background text-foreground shadow-inner' : 'text-foreground/80'
+            )}
+            title={path}
+          >
+            <FileTreeIcon name={name} className="shrink-0" />
+            <span className="truncate max-w-[160px] text-left">{name}</span>
+            <span
+              role="button"
+              aria-label={`Close ${name}`}
+              className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded hover:bg-foreground/10 text-foreground/60"
+              onClick={(e) => { e.stopPropagation(); onClose(path); }}
+            >
+              ×
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+// Breadcrumbs with icons for the active file
+export const SandboxEditorBreadcrumbs = ({ className }: { className?: string }): ReactNode => {
+  const { sandpack } = useSandpack();
+  const active = sandpack.activeFile as string | undefined;
+  const parts = (active || '/').split('/').filter(Boolean);
+
+  return (
+    <div className={cn('flex items-center gap-2 px-2 py-1 text-xs text-foreground/80 border-b border-border bg-secondary/40', className)}>
+      {parts.length === 0 ? (
+        <span className="text-foreground/60">/</span>
+      ) : (
+        parts.map((seg, idx) => {
+          const isLast = idx === parts.length - 1;
+          const name = seg;
+          return (
+            <div key={idx} className="inline-flex items-center gap-1 min-w-0">
+              {idx > 0 && <span className="text-foreground/40">/</span>}
+              {isLast ? (
+                <>
+                  <FileTreeIcon name={name} className="shrink-0" />
+                  <span className="truncate max-w-[220px]">{name}</span>
+                </>
+              ) : (
+                <>
+                  {/* folder segment */}
+                  <FileTreeIcon name={name} isDir className="shrink-0" />
+                  <span className="truncate max-w-[180px]">{name}</span>
+                </>
+              )}
+            </div>
+          );
+        })
+      )}
+    </div>
   );
 };
 
@@ -597,7 +687,7 @@ export const CodiconFileExplorer = ({ className }: CodiconFileExplorerProps): Re
           <TooltipTrigger asChild>
             <li className={cn('px-0 py-1 text-sm cursor-pointer flex items-center gap-2 rounded-md hover:bg-secondary/50 transition-[transform,background] will-change-transform motion-safe:hover:translate-x-[1px]', isActive && 'bg-secondary/70 text-foreground')}
                 onClick={() => openFile(node.path)}>
-              {renderLucide(iconClass)}
+              <FileTreeIcon name={node.name} className="text-foreground/80" />
               <span className="truncate">{node.name}</span>
             </li>
           </TooltipTrigger>
@@ -610,7 +700,7 @@ export const CodiconFileExplorer = ({ className }: CodiconFileExplorerProps): Re
       return (
         <li key={node.path} className="px-0 py-1 text-sm">
           <div className="flex items-center gap-2 cursor-pointer select-none" onClick={() => toggle(node.path)}>
-            {renderLucide(iconClass, isOpen)}
+            <FileTreeIcon name={node.name} isDir isOpen={isOpen} className="text-foreground/80" />
             <span className="font-medium">{node.name}</span>
           </div>
           {isOpen && hasChildren && (
