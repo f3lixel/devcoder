@@ -12,13 +12,13 @@ import {
   SandboxEditorTabs,
   SandboxEditorBreadcrumbs,
 } from '@/components/ui/shadcn-io/sandbox/index';
-import TerminalPane from '@/components/TerminalPane'
 import type { SandpackProviderProps } from '@codesandbox/sandpack-react';
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useRef } from 'react';
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import { useState, useEffect } from 'react';
 import { Loader } from '@/components/ai-elements/loader';
 import type { SandpackTheme } from '@codesandbox/sandpack-react';
+import { useSandpack } from '@codesandbox/sandpack-react';
 import { ChevronLeft, ChevronRight, Code2, Monitor, ExternalLink, RotateCcw, Maximize2, MoreVertical } from 'lucide-react';
 
 interface SandboxPlaygroundProps {
@@ -28,6 +28,46 @@ interface SandboxPlaygroundProps {
   activeFile?: string;
 }
 
+function Toolbar({ onOpenNewTab }: { onOpenNewTab: () => void }) {
+  const { sandpack } = useSandpack();
+  return (
+    <div className="mx-2 flex-1 flex items-center justify-center">
+      <div className="min-w-0 w-[720px] max-w-full h-8 flex items-center gap-2 rounded-md border border-[#222] bg-[#0e0e0e] px-2 text-xs text-neutral-300">
+        <ChevronLeft size={14} className="text-neutral-500" />
+        <ChevronRight size={14} className="text-neutral-500" />
+        <div className="h-4 w-px bg-white/10" />
+        <Monitor size={14} className="text-neutral-500" />
+        <input
+          className="flex-1 bg-transparent outline-none placeholder:text-neutral-500"
+          placeholder="/"
+          value="/"
+          readOnly
+          aria-label="Pfad"
+        />
+        <div className="h-4 w-px bg-white/10" />
+        <button
+          type="button"
+          title="Open in new tab"
+          className="inline-flex h-6 w-6 items-center justify-center rounded-[6px] text-neutral-400 hover:text-white hover:bg-white/5"
+          onClick={onOpenNewTab}
+        >
+          <ExternalLink size={14} />
+        </button>
+        <button
+          type="button"
+          title="Reload"
+          className="inline-flex h-6 w-6 items-center justify-center rounded-[6px] text-neutral-400 hover:text-white hover:bg-white/5"
+          onClick={() => {
+            try { (sandpack as any)?.runSandpack?.(); } catch {}
+          }}
+        >
+          <RotateCcw size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function SandboxPlayground({ 
   files, 
   onFilesChange, 
@@ -35,6 +75,8 @@ export default function SandboxPlayground({
   activeFile
 }: SandboxPlaygroundProps) {
   const [previewReady, setPreviewReady] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const previewContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Mark preview as ready after first mount tick to avoid SSR flash; in real use, wire to sandpack onLoad
   useEffect(() => {
@@ -42,19 +84,19 @@ export default function SandboxPlayground({
     return () => clearTimeout(t);
   }, []);
 
-  // Custom editor theme to match the screenshot vibe
+  // Editor-Theme: VSCode/One Dark Pro nah – dunkle Flächen, grüne Strings, lila Keywords
   const editorTheme: SandpackTheme = {
     colors: {
-      surface1: '#0f1115',
-      surface2: '#0c0e13',
-      surface3: '#0c0e13',
-      clickable: '#9aa4b2',
-      base: '#e5e7eb',
-      disabled: '#3b3f46',
-      hover: '#1a1f2a',
-      accent: '#2dd4bf',
-      error: '#ef4444',
-      errorSurface: '#1f0d12',
+      surface1: '#1e1e1e', // editor background
+      surface2: '#1b1b1b',
+      surface3: '#191919',
+      clickable: '#d4d4d4',
+      base: '#d4d4d4',
+      disabled: '#6b6b6b',
+      hover: '#2a2a2a',
+      accent: '#569cd6', // VSCode blue accent
+      error: '#f14c4c',
+      errorSurface: '#2a1212',
     },
     fonts: {
       body: 'var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
@@ -63,15 +105,15 @@ export default function SandboxPlayground({
       lineHeight: '1.6',
     },
     syntax: {
-      plain: '#e5e7eb',
-      comment: { color: '#6b7280', fontStyle: 'italic' },
-      keyword: '#c084fc',
-      tag: '#f472b6',
-      punctuation: '#9aa4b2',
-      definition: '#93c5fd',
-      property: '#34d399',
-      static: '#f59e0b',
-      string: '#facc15',
+      plain: '#d4d4d4',
+      comment: { color: '#6A9955', fontStyle: 'italic' },
+      keyword: '#C586C0', // purple
+      tag: '#569CD6', // blue
+      punctuation: '#D4D4D4',
+      definition: '#61AFEF', // fn/def
+      property: '#9CDCFE', // object keys / properties
+      static: '#D19A66',
+      string: '#98C379', // green strings
     },
   };
 
@@ -172,7 +214,7 @@ export default function SandboxPlayground({
   }, [onFileSelect]);
 
   return (
-    <div className="felixel-editor-tight h-full w-full p-0 m-0">
+    <div className={"felixel-editor-tight h-full w-full p-0 m-0 " + (isFullscreen ? "fixed inset-0 z-[100] bg-[#0a0a0a]" : "") } ref={previewContainerRef}>
       <SandboxProvider
         template="react"
         files={normalizedFiles}
@@ -215,32 +257,22 @@ export default function SandboxPlayground({
             </div>
 
             {/* Center address bar */}
-            <div className="mx-2 flex-1 flex items-center justify-center">
-              <div className="min-w-0 w-[720px] max-w-full h-8 flex items-center gap-2 rounded-md border border-[#222] bg-[#0e0e0e] px-2 text-xs text-neutral-300">
-                <ChevronLeft size={14} className="text-neutral-500" />
-                <ChevronRight size={14} className="text-neutral-500" />
-                <div className="h-4 w-px bg-white/10" />
-                <Monitor size={14} className="text-neutral-500" />
-                <input
-                  className="flex-1 bg-transparent outline-none placeholder:text-neutral-500"
-                  placeholder="/"
-                  value="/"
-                  readOnly
-                  aria-label="Pfad"
-                />
-                <div className="h-4 w-px bg-white/10" />
-                <button type="button" title="Open in new tab" className="inline-flex h-6 w-6 items-center justify-center rounded-[6px] text-neutral-400 hover:text-white hover:bg-white/5">
-                  <ExternalLink size={14} />
-                </button>
-                <button type="button" title="Reload" className="inline-flex h-6 w-6 items-center justify-center rounded-[6px] text-neutral-400 hover:text-white hover:bg-white/5">
-                  <RotateCcw size={14} />
-                </button>
-              </div>
-            </div>
+            <Toolbar
+              onOpenNewTab={() => {
+                // Try to find the Sandpack preview iframe and open its src in a new tab
+                const root = previewContainerRef.current;
+                if (!root) return;
+                const iframe = root.querySelector('iframe');
+                const src = iframe ? (iframe.getAttribute('src') || iframe.getAttribute('data-src') || '') : '';
+                if (src) {
+                  try { window.open(src, '_blank', 'noopener,noreferrer'); } catch {}
+                }
+              }}
+            />
 
             {/* Right controls */}
             <div className="flex items-center gap-1 px-1">
-              <button type="button" className="h-7 w-7 inline-flex items-center justify-center rounded-md text-neutral-400 hover:text-white hover:bg-white/5" title="Fullscreen">
+              <button type="button" className="h-7 w-7 inline-flex items-center justify-center rounded-md text-neutral-400 hover:text-white hover:bg-white/5" title="Fullscreen" onClick={() => setIsFullscreen((v) => !v)}>
                 <Maximize2 size={16} />
               </button>
               <button type="button" className="h-7 w-7 inline-flex items-center justify-center rounded-md text-neutral-400 hover:text-white hover:bg-white/5" title="More">
@@ -258,7 +290,7 @@ export default function SandboxPlayground({
                   </div>
                 </div>
               )}
-              <SandboxPreview />
+              <SandboxPreview showOpenInCodeSandbox={true} />
             </SandboxTabsContent>
             <SandboxTabsContent value="code" className="h-full w-full p-0 m-0">
               <PanelGroup direction="horizontal" className="h-full w-full p-0 m-0" style={{ gap: 0 }}>
@@ -267,34 +299,13 @@ export default function SandboxPlayground({
                 </Panel>
                 <PanelResizeHandle className="w-1 bg-border data-[resize-handle-active]:bg-primary cursor-col-resize" />
                 <Panel minSize={25} className="h-full p-0 m-0">
-                  <PanelGroup direction="vertical" className="h-full p-0 m-0" style={{ gap: 0 }}>
-                    <Panel defaultSize={70} minSize={30} className="h-full p-0 m-0 flex flex-col">
-                      <SandboxEditorTabs />
-                      <SandboxEditorBreadcrumbs />
-                      <div className="flex-1 min-h-0">
-                        <SandboxCodeEditor showTabs={false} className="!m-0 !p-0" />
-                      </div>
-                    </Panel>
-                    <PanelResizeHandle className="h-1 bg-border data-[resize-handle-active]:bg-primary cursor-row-resize" />
-                    <Panel minSize={20} className="h-full glass-panel rounded-md relative p-0 m-0">
-                      <TerminalPane
-                        className="h-full"
-                        listFiles={() => Object.keys(normalizedFiles).map((p) => ({ path: p }))}
-                        readFile={(path) => {
-                          const entry = (normalizedFiles as any)[path]
-                          if (!entry) return undefined
-                          return typeof entry === 'string' ? entry : entry.code
-                        }}
-                        writeFile={(path, content) => {
-                          onFilesChange(path, content)
-                          handleFileOpen(path)
-                        }}
-                        onOpenFile={(path) => {
-                          handleFileOpen(path)
-                        }}
-                      />
-                    </Panel>
-                  </PanelGroup>
+                  <div className="h-full p-0 m-0 flex flex-col">
+                    <SandboxEditorTabs />
+                    <SandboxEditorBreadcrumbs />
+                    <div className="flex-1 min-h-0">
+                      <SandboxCodeEditor showTabs={false} className="!m-0 !p-0" />
+                    </div>
+                  </div>
                 </Panel>
               </PanelGroup>
             </SandboxTabsContent>

@@ -45,6 +45,10 @@ export function NewAIChat({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [status, setStatus] = useState<ChatStatus>("idle");
   const [streamingMessage, setStreamingMessage] = useState<string>("");
+  const [reasoningStream, setReasoningStream] = useState<string>("");
+  const [showReasoning, setShowReasoning] = useState<boolean>(false);
+  const [errors, setErrors] = useState<string[]>([]);
+  const [lastErrorDetail, setLastErrorDetail] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -135,6 +139,8 @@ export function NewAIChat({
     setMessages(updatedMessages);
     setStatus("streaming");
     setStreamingMessage("");
+    setReasoningStream("");
+    setErrors([]);
 
     // Create abort controller for this request
     const abortController = new AbortController();
@@ -151,10 +157,14 @@ export function NewAIChat({
       // Robust streaming reader for SSE/text streams
       let partial = "";
 
-      const res = await fetch("/api/agent/coding", {
+      const systemPrompt = (() => {
+        try { return localStorage.getItem('ai-system-prompt') || undefined; } catch { return undefined; }
+      })();
+
+      const res = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, goal: message.text || "" }),
+        body: JSON.stringify({ projectId, goal: message.text || "", system: systemPrompt }),
         signal: abortController.signal,
       });
 
@@ -169,6 +179,7 @@ export function NewAIChat({
       let buffer = "";
       const contentType = res.headers.get("content-type") || "";
       const isSSE = contentType.includes("text/event-stream");
+      let lastEventName: string | null = null;
 
       for (;;) {
         const { done, value } = await reader.read();
@@ -188,18 +199,54 @@ export function NewAIChat({
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed) continue;
+          // Ignore SSE comment lines
+          if (trimmed.startsWith(":")) continue; // OpenRouter style comments [[memory:9180833]]
+          if (trimmed.startsWith("event:")) {
+            lastEventName = trimmed.slice(6).trim();
+            continue;
+          }
           if (trimmed.startsWith("data: ")) {
             const data = trimmed.slice(6);
             if (data === "[DONE]") continue;
             try {
               const evt = JSON.parse(data);
-              // New agent SSE event schema
-              if (evt?.type === "token" && typeof evt.text === "string") {
+              // Token stream
+              if ((evt?.type === "token" || lastEventName === "token") && typeof evt.text === "string") {
                 partial += evt.text;
                 setStreamingMessage(partial);
                 continue;
               }
-              // Optionally handle files/status events later as needed
+              // Reasoning stream
+              const typeLower = typeof evt?.type === 'string' ? String(evt.type).toLowerCase() : '';
+              if (typeLower.includes('reasoning') || lastEventName === 'reasoning' || evt?.reasoning) {
+                const chunk = evt?.text ?? evt?.delta ?? evt?.content ?? evt?.reasoning ?? '';
+                if (chunk) {
+                  setReasoningStream((prev) => prev + String(chunk));
+                  // auto-open panel on first reasoning token
+                  setShowReasoning((prev) => prev || true);
+                }
+                continue;
+              }
+              // Error events forwarded mid-stream
+              if (typeLower === 'error' || lastEventName === 'error' || evt?.error) {
+                let errText = '';
+                if (typeof evt === 'string') {
+                  errText = evt;
+                } else if (evt?.message || evt?.error) {
+                  errText = String(evt.message || evt.error);
+                } else {
+                  try { errText = JSON.stringify(evt); } catch { errText = 'Unknown error'; }
+                }
+                if (errText) setErrors((prev) => [...prev, errText]);
+                try {
+                  if (evt?.detail) {
+                    setLastErrorDetail(JSON.stringify(evt.detail, null, 2));
+                  }
+                } catch {}
+                setStatus('error');
+                continue;
+              }
+              // Status/info events could be handled here in future
             } catch {
               // Non-JSON data lines are ignored
             }
@@ -251,6 +298,9 @@ export function NewAIChat({
       };
 
       setMessages(prev => [...prev, errorMessage]);
+      if (error instanceof Error && error.message) {
+        setErrors((prev) => [...prev, error.message]);
+      }
     } finally {
       abortControllerRef.current = null;
     }
@@ -338,6 +388,42 @@ export function NewAIChat({
         </ConversationContent>
         <ConversationScrollButton />
       </Conversation>
+
+      {/* Reasoning panel and errors */}
+      {(showReasoning || reasoningStream.length > 0 || errors.length > 0) && (
+        <div className="border-t border-white/10 px-3 py-2">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              className="text-xs text-neutral-400 hover:text-neutral-200"
+              onClick={() => setShowReasoning((v) => !v)}
+            >
+              {showReasoning ? 'Gedanken ausblenden' : 'Gedanken anzeigen'}
+            </button>
+            {errors.length > 0 && (
+              <div className="ml-auto text-[11px] rounded px-2 py-1 bg-red-500/10 text-red-300 border border-red-500/20">
+                Fehler: {errors[errors.length - 1]}
+              </div>
+            )}
+          </div>
+          {showReasoning && (
+            <div className="mt-2 max-h-40 overflow-auto rounded-md bg-black/40 border border-white/10 p-2">
+              <pre className="whitespace-pre-wrap break-words text-[12px] leading-5 font-mono text-neutral-300 m-0">
+                {reasoningStream || '—'}
+              </pre>
+              {lastErrorDetail && (
+                <>
+                  <div className="h-2" />
+                  <div className="rounded-md bg-red-950/30 border border-red-500/20 p-2">
+                    <div className="text-[11px] text-red-300 mb-1">Fehlerdetails</div>
+                    <pre className="whitespace-pre-wrap break-words text-[11px] leading-5 font-mono text-red-200 m-0">{lastErrorDetail}</pre>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="border-t px-0 py-4">
         <div className="mb-2 flex items-center justify-between">

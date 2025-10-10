@@ -16,6 +16,8 @@ const openrouter = createOpenRouter({
   },
 });
 
+const MODEL_ID = process.env.OPENROUTER_MODEL_ID || 'qwen/qwen3-72b-instruct';
+
 export const codingAgent = new Agent({
   name: 'Coding Agent',
   instructions: `
@@ -163,7 +165,7 @@ For sophisticated projects, leverage:
 
 Remember: Focus on producing runnable, cohesive code within the existing project, optimized for Sandpack live preview.
 `,
-  model: openrouter('qwen/qwen3-next-80b-a3b-thinking'),
+  model: openrouter(MODEL_ID),
   tools: {
     listProjectFiles,
     readProjectFile,

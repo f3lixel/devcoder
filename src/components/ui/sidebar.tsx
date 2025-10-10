@@ -162,11 +162,13 @@ export const SidebarLink = ({ link, className, onClick, href, ...rest }: {
   href?: any;
 } & Omit<React.ComponentProps<typeof Link>, "href" | "children">) => {
   const { open, animate } = useSidebar();
+  const transition = { type: "spring" as const, stiffness: 260, damping: 26 };
   return (
     <Link
       href={href ?? link.href}
       className={cn(
-        "flex items-center justify-start gap-2 group/sidebar py-2",
+        "flex items-center gap-2 group/sidebar py-2",
+        animate ? (open ? "justify-start" : "justify-center") : "justify-start",
         className
       )}
       onClick={onClick}
@@ -175,15 +177,21 @@ export const SidebarLink = ({ link, className, onClick, href, ...rest }: {
       <div className="h-5 w-5 shrink-0 flex items-center justify-center">
         {link.icon}
       </div>
-      <motion.span
-        animate={{
-          display: animate ? (open ? "inline-block" : "none") : "inline-block",
-          opacity: animate ? (open ? 1 : 0) : 1,
-        }}
-        className="text-neutral-700 dark:text-neutral-200 text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
+      <motion.div
+        className="overflow-hidden"
+        initial={false}
+        animate={{ maxWidth: animate ? (open ? 200 : 0) : 200 }}
+        transition={transition}
       >
-        {link.label}
-      </motion.span>
+        <motion.span
+          initial={false}
+          animate={{ opacity: animate ? (open ? 1 : 0) : 1, x: animate ? (open ? 0 : 6) : 0 }}
+          transition={transition}
+          className="text-neutral-700 dark:text-neutral-200 text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
+        >
+          {link.label}
+        </motion.span>
+      </motion.div>
     </Link>
   );
 };

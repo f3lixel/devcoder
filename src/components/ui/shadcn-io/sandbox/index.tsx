@@ -716,7 +716,7 @@ export const CodiconFileExplorer = ({ className }: CodiconFileExplorerProps): Re
 
     // root
     return (
-      <ul className={cn('h-full overflow-auto p-0 m-0 list-none space-y-0.5', className)}>
+      <ul className={cn('h-full overflow-auto px-2 py-2 m-0 list-none space-y-0.5', className)}>
         {node.children && Object.values(node.children)
           .sort((a, b) => Number(b.isDir) - Number(a.isDir) || a.name.localeCompare(b.name))
           .map((child) => (

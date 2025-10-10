@@ -19,6 +19,7 @@ import {
   Sparkles,
   ChevronDown,
 } from "lucide-react";
+import Image from "next/image";
 
 export default function ProjectsSidebar() {
   const [aiOpen, setAiOpen] = useState(false);
@@ -76,10 +77,13 @@ export default function ProjectsSidebar() {
     <Sidebar>
       <SidebarBody
         className={cn(
-          "!pt-16 bg-[rgba(0,0,3,1)] backdrop-blur-0 border-r border-white/10 rounded-none",
+          "relative !pt-16 bg-[rgba(0,0,3,1)] backdrop-blur-0 border-r border-white/10 rounded-none",
           "text-neutral-200"
         )}
       >
+        <div className="absolute left-0 top-2 w-[60px] flex items-center justify-center">
+          <BrandLogo />
+        </div>
         <div className="flex flex-col gap-1">
             {links.map((link) => (
               <div key={link.key} className="px-1" onClick={link.key === "ai" ? (e) => { e.preventDefault(); setAiDialogOpen(true); } : undefined}>
@@ -139,6 +143,20 @@ export default function ProjectsSidebar() {
         </DialogContent>
       </Dialog>
     </Sidebar>
+  );
+}
+
+function BrandLogo() {
+  return (
+    <div className="flex items-center justify-center w-full">
+      <Image
+        src="/user-logo.svg"
+        alt="User Logo"
+        width={40}
+        height={32}
+        priority
+      />
+    </div>
   );
 }
 
