@@ -6,34 +6,30 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { cn } from '@/lib/utils';
-import { BrainIcon, ChevronDownIcon } from 'lucide-react';
+import { ChevronDownIcon } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import { createContext, memo, useContext, useEffect, useState } from 'react';
-import { Response } from './response';
+import { cn } from '@/lib/utils';
+import { Response as AIResponse } from '@/components/ui/shadcn-io/ai/response';
 
-// Context
-
-type ReasoningContextValue = {
+type AIReasoningContextValue = {
   isStreaming: boolean;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   duration: number;
 };
 
-const ReasoningContext = createContext<ReasoningContextValue | null>(null);
+const AIReasoningContext = createContext<AIReasoningContextValue | null>(null);
 
-const useReasoning = () => {
-  const context = useContext(ReasoningContext);
+const useAIReasoning = () => {
+  const context = useContext(AIReasoningContext);
   if (!context) {
-    throw new Error('Reasoning components must be used within Reasoning');
+    throw new Error('AIReasoning components must be used within AIReasoning');
   }
   return context;
 };
 
-// Container
-
-export type ReasoningProps = ComponentProps<typeof Collapsible> & {
+export type AIReasoningProps = ComponentProps<typeof Collapsible> & {
   isStreaming?: boolean;
   open?: boolean;
   defaultOpen?: boolean;
@@ -41,9 +37,7 @@ export type ReasoningProps = ComponentProps<typeof Collapsible> & {
   duration?: number;
 };
 
-const AUTO_CLOSE_DELAY = 1000;
-
-export const Reasoning = memo(
+export const AIReasoning = memo(
   ({
     className,
     isStreaming = false,
@@ -53,7 +47,7 @@ export const Reasoning = memo(
     duration: durationProp,
     children,
     ...props
-  }: ReasoningProps) => {
+  }: AIReasoningProps) => {
     const [isOpen, setIsOpen] = useControllableState({
       prop: open,
       defaultProp: defaultOpen,
@@ -84,20 +78,21 @@ export const Reasoning = memo(
       if (isStreaming && !isOpen) {
         setIsOpen(true);
       } else if (!isStreaming && isOpen && !defaultOpen && !hasAutoClosedRef) {
+        // Add a small delay before closing to allow user to see the content
         const timer = setTimeout(() => {
           setIsOpen(false);
           setHasAutoClosedRef(true);
-        }, AUTO_CLOSE_DELAY);
+        }, 1000);
         return () => clearTimeout(timer);
       }
     }, [isStreaming, isOpen, defaultOpen, setIsOpen, hasAutoClosedRef]);
 
-    const handleOpenChange = (newOpen: boolean) => {
-      setIsOpen(newOpen);
+    const handleOpenChange = (open: boolean) => {
+      setIsOpen(open);
     };
 
     return (
-      <ReasoningContext.Provider
+      <AIReasoningContext.Provider
         value={{ isStreaming, isOpen, setIsOpen, duration }}
       >
         <Collapsible
@@ -108,27 +103,25 @@ export const Reasoning = memo(
         >
           {children}
         </Collapsible>
-      </ReasoningContext.Provider>
+      </AIReasoningContext.Provider>
     );
   }
 );
 
-// Trigger
-
-export type ReasoningTriggerProps = ComponentProps<
+export type AIReasoningTriggerProps = ComponentProps<
   typeof CollapsibleTrigger
 > & {
   title?: string;
 };
 
-export const ReasoningTrigger = memo(
+export const AIReasoningTrigger = memo(
   ({
     className,
     title = 'Reasoning',
     children,
     ...props
-  }: ReasoningTriggerProps) => {
-    const { isStreaming, isOpen, duration } = useReasoning();
+  }: AIReasoningTriggerProps) => {
+    const { isStreaming, isOpen, duration } = useAIReasoning();
 
     return (
       <CollapsibleTrigger
@@ -140,7 +133,6 @@ export const ReasoningTrigger = memo(
       >
         {children ?? (
           <>
-            <BrainIcon className="size-4" />
             {isStreaming || duration === 0 ? (
               <p>Thinking...</p>
             ) : (
@@ -159,29 +151,23 @@ export const ReasoningTrigger = memo(
   }
 );
 
-// Content
-
-export type ReasoningContentProps = ComponentProps<
+export type AIReasoningContentProps = ComponentProps<
   typeof CollapsibleContent
 > & {
   children: string;
 };
 
-export const ReasoningContent = memo(
-  ({ className, children, ...props }: ReasoningContentProps) => (
+export const AIReasoningContent = memo(
+  ({ className, children, ...props }: AIReasoningContentProps) => (
     <CollapsibleContent
-      className={cn(
-        'mt-4 text-sm',
-        'data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-popover-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in',
-        className
-      )}
+      className={cn('mt-4 text-muted-foreground text-sm', className)}
       {...props}
     >
-      <Response className="grid gap-2">{children}</Response>
+      <AIResponse className="grid gap-2">{children}</AIResponse>
     </CollapsibleContent>
   )
 );
 
-Reasoning.displayName = 'Reasoning';
-ReasoningTrigger.displayName = 'ReasoningTrigger';
-ReasoningContent.displayName = 'ReasoningContent';
+AIReasoning.displayName = 'AIReasoning';
+AIReasoningTrigger.displayName = 'AIReasoningTrigger';
+AIReasoningContent.displayName = 'AIReasoningContent';

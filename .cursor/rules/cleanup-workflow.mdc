@@ -1,0 +1,103 @@
+---
+alwaysApply: false
+description: >-
+  Workflow-Vorlage für eine AI-Agentin, die eine Codebase analysiert, Relevanz bewertet
+  und eine strukturierte Aufräum-Liste (löschen/überarbeiten/prüfen) erzeugt.
+---
+
+# Codebase-Aufräum-Workflow (Analyse → Bewertung → Maßnahmenliste)
+
+Zweck: Guidance für eine AI-Agentin, die eine bestehende Codebase effizient analysiert und eine sichere, nachvollziehbare Aufräum-Empfehlung liefert – ohne aktive Funktionen zu entfernen.
+
+## Eingaben
+- **Kontext**: {Hier wird der Pfad zur Codebase oder ein Auszug eingefügt}
+- **User-Eingabe**: {Hier kommt die spezifische Anfrage oder der Bereich, auf den sich die Analyse fokussieren soll}
+
+## Ziele
+1. Vollständige Sicht auf Dateien, Verzeichnisse und Modul-Abhängigkeiten bekommen.
+2. Unbenutzte/Redundante/Veraltete Teile identifizieren.
+3. Für jede Datei/Modul Relevanz bewerten: „relevant“ vs. „nicht relevant“ (unter Wartungsaspekt).
+4. Aufräum-Liste erzeugen: löschen / überarbeiten / prüfen.
+5. Strukturierte Ausgabe (Zusammenfassung, Tabelle, Empfehlung).
+6. Bei Unsicherheit auf potenzielle indirekte Nutzung hinweisen.
+
+## Vorgehensmodell (Schritte)
+1) **Scoping & Inventur**
+   - Lies rekursiv alle Dateien (unterhalb des angegebenen Kontexts).
+   - Erfasse Dateitypen, Größe, Änderungszeit (falls verfügbar).
+   - Bestimme Entry-Points (z. B. `index.js`, `index.tsx`, `src/main.tsx`, Framework-Routen, Server-Routen, CLI-Entrypoints, `public/index.html`).
+
+2) **Abhängigkeitsgraph aufbauen**
+   - Parse Imports/Requires/Dynamic Imports (`import()`, `require`, Framework-Router, Next.js App Router-Dateien, API-Routen).
+   - Erzeuge Kanten: `A → B`, wenn A B importiert/verlinkt.
+   - Zähle Inbound-Referenzen je Datei (Fan-In) und Outbound-Referenzen (Fan-Out).
+   - Berücksichtige gängige Konventionen: Index-Dateien, Barrel-Files (`index.ts`), Styles/Assets, Tests (`*.test.*`, `__tests__`), Storybook (`*.stories.*`).
+
+3) **Heuristiken für Kandidaten**
+   - **Unbenutzt**: Dateien ohne Inbound-Referenzen und keine Entry-Points.
+   - **Redundant/Alt**: Duplikate, alte Versionen (`*-old.*`, `*-backup.*`, `.bak`, `copy`, `unused`, `deprecated`), toter Code (auskommentiert), veraltete Adapter.
+   - **Niedrige Nutzung**: Tests ohne Testsuites/Asserts, Komponenten ohne Usage, Utilities mit 0-1 Referenzen (wenn nicht Entry-Point).
+   - **Generierte Artefakte**: Build-Outputs, Caches – nur markieren, falls im Repo.
+   - **Server/Client-Mismatch**: Dateien, die in Runtime-Kontext nicht passen (z. B. Node-APIs im Browser-Bundle), als „überarbeiten“ markieren.
+
+4) **Relevanzbewertung**
+   - Relevanz = Wird gewartet/gebraucht? Kriterien:
+     - Inbound-Referenzen > 0 ODER Entry-Point ODER Export von öffentlichen APIs.
+     - Tests/Stories/Docs, die sich auf produktiven Code beziehen.
+     - Letzte Änderung jüngst (Team arbeitet daran).
+   - Nicht relevant = keine Referenzen, keine Entry-Rolle, eindeutige Alt-/Backup-Hinweise.
+
+5) **Kategorisierung (Maßnahmen)**
+   - **löschen**: Sicher unbenutzt und ohne indirekte Nutzung.
+   - **überarbeiten**: Veraltet/Redundant, aber grundsätzlich genutzt (Refactor/Umbenennen/Konsolidieren).
+   - **prüfen**: Möglicherweise dynamisch referenziert (SSR/Router/Glob-Imports), oder unklare Ownership.
+
+6) **Unsicherheiten markieren**
+   - Verweise explizit auf dynamische Mechanismen: Router-Matching, Dateinamenskonventionen, `require.context`, `import.meta.glob`, Reflection, CMS-Inhalte.
+   - Formuliere: „Diese Datei könnte indirekt verwendet werden, bitte manuell prüfen“.
+
+## Output-Format (verbindlich)
+
+- **Zusammenfassung**
+  - Dateien gesamt, Kandidaten: löschen / überarbeiten / prüfen.
+
+- **Tabelle** (Markdown)
+  - Spalten: `Pfad | Bewertung | Begründung | Hinweise/Unsicherheit`
+  - Bewertung ∈ {`löschen`, `überarbeiten`, `prüfen`}
+
+- **Empfehlung nächster Schritt**
+  - Backup/Branch anlegen, schrittweise löschen, Tests/Preview starten, Refactoring-Plan.
+
+Beispielstruktur:
+
+```
+### Zusammenfassung
+- Analysierte Dateien: 241
+- Kandidaten: löschen=18, überarbeiten=9, prüfen=7
+
+### Aufräum-Tabelle
+Pfad | Bewertung | Begründung | Hinweise/Unsicherheit
+---|---|---|---
+src/utils/old-logger.ts | löschen | 0 Inbound-Refs, markiert als deprecated | –
+src/components/Chart.v1.tsx | überarbeiten | veraltet, v2 aktiv genutzt | ggf. Migration prüfen
+src/pages/legacy/[slug].tsx | prüfen | dynamische Route, evtl. CMS-Referenzen | manuell validieren
+
+### Empfehlung
+- Branch `chore/cleanup` anlegen, Kandidaten „löschen“ in Commit 1 entfernen.
+- Test-Suite & Preview laufen lassen, Errors fixen.
+- „überarbeiten“ in kleinen PRs refaktorisieren (Renames, Konsolidierung).
+```
+
+## Arbeitsprinzipien
+- Keine produktive Funktionalität entfernen, wenn Zweifel bestehen.
+- Änderungen immer inkrementell, gut beschriftet, testbar.
+- Bei Frameworks (Next.js, Vite, CRA, Sandpack) Entry-Points beachten.
+- Dokumentiere Annahmen und Unsicherheiten.
+
+## Ausführung (Agent-Leitfaden)
+1. Dateibaum lesen; optional Fokus auf vom User genannten Pfad.
+2. Abhängigkeitsgraph via statischer Analyse + Konventionen erstellen.
+3. Heuristiken anwenden, Liste der Kandidaten erzeugen.
+4. Ergebnis im oben definierten Format ausgeben.
+5. Auf Nachfrage: konkrete Delete-/Refactor-Edits vorschlagen (mit minimalem Risiko, Tests vorausgesetzt).
+

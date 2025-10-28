@@ -12,6 +12,7 @@ import { nanoid } from "nanoid";
 import { usePathname, useSearchParams } from "next/navigation";
 import StatusBadge from "@/components/StatusBadge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { AITodoPlan, type TodoPlan, type TodoStep } from "@/components/ai-todo-plan";
 
 interface NewAIChatProps {
   onNewFiles?: (files: Array<{ path: string; content: string }>) => void;
@@ -49,6 +50,7 @@ export function NewAIChat({
   const [showReasoning, setShowReasoning] = useState<boolean>(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [lastErrorDetail, setLastErrorDetail] = useState<string | null>(null);
+  const [todoPlan, setTodoPlan] = useState<TodoPlan | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -140,7 +142,8 @@ export function NewAIChat({
     setStatus("streaming");
     setStreamingMessage("");
     setReasoningStream("");
-    setErrors([]);
+  setErrors([]);
+  setTodoPlan(null);
 
     // Create abort controller for this request
     const abortController = new AbortController();
@@ -155,7 +158,67 @@ export function NewAIChat({
       console.log('Sending messages to API:', messagesToSend);
       
       // Robust streaming reader for SSE/text streams
-      let partial = "";
+      let partial = ""; // cleaned text shown to the user
+      let rawText = ""; // raw stream including potential tool blocks
+
+      const applyTodoDelta = (delta: any) => {
+        setTodoPlan((prev) => {
+          const current: TodoPlan = prev || { phase: "running", progress: { done: 0, total: 0 }, steps: [] };
+          let next: TodoPlan = { ...current, steps: [...current.steps.map((s) => ({ ...s }))] };
+          if (delta?.phase) next.phase = delta.phase;
+          if (delta?.progress) {
+            next.progress = { ...next.progress, ...delta.progress } as any;
+          }
+          if (Array.isArray(delta?.replaceSteps)) {
+            next.steps = delta.replaceSteps as any;
+          }
+          if (delta?.upsertStep) {
+            const idx = next.steps.findIndex((s) => s.id === delta.upsertStep.id);
+            if (idx >= 0) next.steps[idx] = { ...(next.steps[idx] as TodoStep), ...(delta.upsertStep as TodoStep) };
+            else next.steps.push(delta.upsertStep as TodoStep);
+          }
+          if (delta?.updateStep && delta.updateStep.id) {
+            const idx = next.steps.findIndex((s) => s.id === delta.updateStep.id);
+            if (idx >= 0) next.steps[idx] = { ...(next.steps[idx] as TodoStep), ...delta.updateStep } as any;
+          }
+          return next;
+        });
+      };
+
+      const processToolBlocks = () => {
+        // Look for fenced blocks like ```tool: todo-plan\n{...}\n```
+        const re = /```tool:\s*todo-plan\n([\s\S]*?)```/g;
+        let match: RegExpExecArray | null;
+        let changed = false;
+        while ((match = re.exec(rawText)) !== null) {
+          const full = match[0];
+          const jsonStr = match[1]?.trim() || "";
+          try {
+            const data = JSON.parse(jsonStr);
+            if (data?.plan) {
+              setTodoPlan(data.plan as TodoPlan);
+            } else if (data?.delta) {
+              applyTodoDelta(data.delta);
+            } else if (data?.steps || data?.phase || data?.progress) {
+              // allow direct plan content
+              setTodoPlan((prev) => ({
+                steps: data.steps ?? prev?.steps ?? [],
+                phase: data.phase ?? prev?.phase ?? "running",
+                progress: data.progress ?? prev?.progress ?? { done: 0, total: 0 },
+              }));
+            }
+          } catch {
+            // ignore malformed JSON until complete
+          }
+          // strip this block from user-visible text
+          rawText = rawText.replace(full, "");
+          changed = true;
+        }
+        if (changed) {
+          partial = rawText;
+          setStreamingMessage(partial);
+        }
+      };
 
       const systemPrompt = (() => {
         try { return localStorage.getItem('ai-system-prompt') || undefined; } catch { return undefined; }
@@ -212,7 +275,11 @@ export function NewAIChat({
               const evt = JSON.parse(data);
               // Token stream
               if ((evt?.type === "token" || lastEventName === "token") && typeof evt.text === "string") {
-                partial += evt.text;
+                rawText += evt.text;
+                // try to consume any complete tool blocks and remove from output
+                processToolBlocks();
+                // update display text
+                partial = rawText;
                 setStreamingMessage(partial);
                 continue;
               }
@@ -255,7 +322,9 @@ export function NewAIChat({
       }
 
       // Finalize assistant message
-      let finalText = partial.trim();
+  // Final processing: ensure any remaining tool blocks are removed
+  processToolBlocks();
+  let finalText = (rawText || partial).trim();
       if (!finalText) {
         finalText = "Es tut mir leid, ich konnte keine Antwort generieren. Bitte versuchen Sie es erneut.";
       }
@@ -274,7 +343,7 @@ export function NewAIChat({
       }
 
       setMessages(prev => [...prev, assistantMessage]);
-      setStatus("idle");
+  setStatus("idle");
       setStreamingMessage("");
 
     } catch (error) {
@@ -325,6 +394,13 @@ export function NewAIChat({
     <div className="flex h-full flex-col" style={{ backgroundColor: "rgba(0, 0, 3, 1)" }}>
       <Conversation className="flex-1">
         <ConversationContent className="space-y-6">
+          {/* Live Todo Plan */}
+          {todoPlan && (
+            <div>
+              <div className="mb-2 text-xs text-neutral-300">To-dos {todoPlan.progress?.total || (todoPlan.steps?.length ?? 0)}</div>
+              <AITodoPlan plan={todoPlan} />
+            </div>
+          )}
           {messages.length === 0 ? (
             <ConversationEmptyState
               title="Willkommen beim AI Code Assistant"

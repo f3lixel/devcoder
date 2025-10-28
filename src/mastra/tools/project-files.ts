@@ -20,8 +20,10 @@ export const listProjectFiles = createTool({
       ),
     })
     .or(z.object({ error: z.string() })),
-  execute: async ({ input, context }) => {
+  execute: async (args) => {
     try {
+      const input = (args as any)?.input;
+      const context = (args as any)?.context;
       const projectId = (input as any)?.projectId || (context as any)?.projectId;
       if (!projectId) return { error: 'projectId missing' };
       const svc = supabaseService();
@@ -56,8 +58,10 @@ export const readProjectFile = createTool({
   outputSchema: z
     .object({ content: z.string(), path: z.string() })
     .or(z.object({ error: z.string() })),
-  execute: async ({ input, context }) => {
+  execute: async (args) => {
     try {
+      const input = (args as any)?.input;
+      const context = (args as any)?.context;
       const projectId = (input as any)?.projectId || (context as any)?.projectId;
       if (!projectId) return { error: 'projectId missing' };
       const path = String((input as any)?.path || '');
@@ -89,8 +93,10 @@ export const writeProjectFile = createTool({
   outputSchema: z
     .object({ success: z.boolean(), path: z.string() })
     .or(z.object({ error: z.string() })),
-  execute: async ({ input, context }) => {
+  execute: async (args) => {
     try {
+      const input = (args as any)?.input;
+      const context = (args as any)?.context;
       const projectId = (input as any)?.projectId || (context as any)?.projectId;
       if (!projectId) return { error: 'projectId missing' };
       const path = String((input as any)?.path || '');
@@ -119,17 +125,20 @@ export const writeProjectFiles = createTool({
   outputSchema: z
     .object({ success: z.boolean(), filesWritten: z.array(z.string()) })
     .or(z.object({ error: z.string() })),
-  execute: async ({ input, context }) => {
+  execute: async (args) => {
     try {
+      const input = (args as any)?.input;
+      const context = (args as any)?.context;
       const projectId = (input as any)?.projectId || (context as any)?.projectId;
       if (!projectId) return { error: 'projectId missing' };
       const files = Array.isArray((input as any)?.files) ? (input as any).files : [];
       if (files.length === 0) return { error: 'files required' };
       const svc = supabaseService();
-      const rows = files.map((f: any) => ({ project_id: projectId, path: String(f.path), content: String(f.content ?? '') }));
+      const rows: Array<{ project_id: string; path: string; content: string }> = files.map((f: any) => ({ project_id: projectId, path: String(f.path), content: String(f.content ?? '') }));
       const { error } = await svc.from('files').upsert(rows, { onConflict: 'project_id,path' });
       if (error) return { error: error.message };
-      return { success: true, filesWritten: rows.map(r => r.path) };
+      const filesWritten = rows.map((r: { project_id: string; path: string; content: string }) => r.path);
+      return { success: true, filesWritten };
     } catch (e: any) {
       return { error: e?.message || 'failed to write files' };
     }
@@ -146,8 +155,10 @@ export const deleteProjectFile = createTool({
   outputSchema: z
     .object({ success: z.boolean(), path: z.string() })
     .or(z.object({ error: z.string() })),
-  execute: async ({ input, context }) => {
+  execute: async (args) => {
     try {
+      const input = (args as any)?.input;
+      const context = (args as any)?.context;
       const projectId = (input as any)?.projectId || (context as any)?.projectId;
       if (!projectId) return { error: 'projectId missing' };
       const path = String((input as any)?.path || '');

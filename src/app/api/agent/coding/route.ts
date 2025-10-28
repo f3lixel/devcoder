@@ -10,4 +10,6 @@ export async function POST(_req: NextRequest) {
   return new Response(JSON.stringify({ error: 'deprecated', message: 'Use /api/ai instead of /api/agent/coding' }), { status: 410 });
 }
 
+{
+}
 

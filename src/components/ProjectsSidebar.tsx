@@ -20,6 +20,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import Image from "next/image";
+import { useSearchParams, usePathname } from "next/navigation";
 
 export default function ProjectsSidebar() {
   const [aiOpen, setAiOpen] = useState(false);
@@ -73,6 +74,26 @@ export default function ProjectsSidebar() {
     },
   ];
 
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const currentProjectId = searchParams.get("projectId");
+  const currentUrl = (() => {
+    const qs = searchParams.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  })();
+
+  // Merge vorhandene projectId in Projekt-Links, ohne die URL sichtbar zu ändern
+  const withProjectId = (href: string): { href: string; preventNav: boolean } => {
+    try {
+      if (!href.startsWith("/projects")) return { href, preventNav: false };
+      // Für alle /projects-Links: bleibe auf der aktuellen URL
+      // (enthält bereits projectId), Navigation wird verhindert
+      return { href: currentUrl, preventNav: true };
+    } catch {
+      return { href, preventNav: false };
+    }
+  };
+
   return (
     <Sidebar>
       <SidebarBody
@@ -85,15 +106,19 @@ export default function ProjectsSidebar() {
           <BrandLogo />
         </div>
         <div className="flex flex-col gap-1">
-            {links.map((link) => (
-              <div key={link.key} className="px-1" onClick={link.key === "ai" ? (e) => { e.preventDefault(); setAiDialogOpen(true); } : undefined}>
-                <SidebarLink
-                  link={{ label: link.label, href: link.href, icon: link.icon }}
-                  className="rounded-xl px-2 hover:bg-white/5"
-                  href={link.href}
-                />
-              </div>
-            ))}
+            {links.map((link) => {
+              const { href: computedHref, preventNav } = withProjectId(link.href);
+              return (
+                <div key={link.key} className="px-1" onClick={link.key === "ai" ? (e) => { e.preventDefault(); setAiDialogOpen(true); } : undefined}>
+                  <SidebarLink
+                    link={{ label: link.label, href: computedHref, icon: link.icon }}
+                    className="rounded-xl px-2 hover:bg-white/5"
+                    href={computedHref}
+                    onClick={preventNav ? (e) => e.preventDefault() : undefined}
+                  />
+                </div>
+              );
+            })}
         </div>
 
         <div className="my-3">

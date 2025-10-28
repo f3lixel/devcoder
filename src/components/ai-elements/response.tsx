@@ -7,14 +7,15 @@ import { Streamdown } from "streamdown";
 type ResponseProps = ComponentProps<typeof Streamdown>;
 
 export const Response = memo(
-  ({ className, ...props }: ResponseProps) => (
+  ({ className, children, ..._rest }: ResponseProps) => (
     <Streamdown
       className={cn(
         "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
         className
       )}
-      {...props}
-    />
+    >
+      {children}
+    </Streamdown>
   ),
   (prevProps, nextProps) => prevProps.children === nextProps.children
 );

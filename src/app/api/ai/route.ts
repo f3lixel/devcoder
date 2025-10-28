@@ -28,7 +28,31 @@ export async function POST(req: NextRequest) {
     const headers = buildHeaders();
 
     const messages: Array<{ role: 'system' | 'user'; content: string }> = [];
+    const todoProtocol = `You are integrated into a Next.js coding app that parses special fenced tool blocks.
+
+Protocol for a visible To-do plan in the chat UI:
+- Emit a first high-level plan immediately as a fenced block:
+  \`\`\`tool: todo-plan
+  {"plan": {"phase": "running", "progress": {"done": 0, "total": N}, "steps": [
+    {"id": "s1", "type": "analyze", "label": "Analyze repository", "state": "pending"},
+    {"id": "s2", "type": "create", "label": "Add route", "path": "/src/app/contact/page.tsx", "state": "pending"}
+  ]}}
+  \`\`\`
+- While working, update using deltas with the same tool header. Examples:
+  - Mark a step pending/done/error:
+    \`\`\`tool: todo-plan
+    {"delta": {"updateStep": {"id": "s1", "state": "done"}, "progress": {"done": 1}}}
+    \`\`\`
+  - Upsert or replace steps:
+    \`\`\`tool: todo-plan
+    {"delta": {"upsertStep": {"id": "s3", "type": "edit", "label": "Wire UI", "path": "/src/components/NewAIChat.tsx", "state": "pending"}}}
+    \`\`\`
+- Keep narrative reasoning outside of these blocks. Do not include prose in tool fences. Use concise IDs like s1, s2.
+- When all done, send: {"delta": {"phase": "complete"}} in a final block.
+`;
+
     if (system && system.trim()) messages.push({ role: 'system', content: system.trim() });
+    messages.push({ role: 'system', content: todoProtocol });
     messages.push({ role: 'user', content: goal });
 
     // Prefer user-provided model, then qwen/qwen3-coder-flash, then safe fallbacks

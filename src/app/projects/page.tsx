@@ -7,7 +7,7 @@ import { useViewMode } from "@/components/view-mode-context";
 import { Suspense, useState, useMemo, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import type { SandpackProviderProps } from "@codesandbox/sandpack-react";
-import SandboxPlayground from "@/components/SandboxPlayground";
+const SandboxPlayground = dynamic(() => import("@/components/SandboxPlayground"), { ssr: false });
 import { NewAIChat } from "@/components/NewAIChat";
 
 const DEFAULT_STORAGE_KEY = 'sandbox:react:session:v1';
@@ -119,30 +119,25 @@ function HomeContent() {
   }, [files, storageKey]);
 
   const handleNewFiles = useCallback((newFiles: Array<{ path: string; content: string }>) => {
-    const updatedFiles = { ...files };
     let firstPath: string | undefined;
-    newFiles.forEach(file => {
-      const normalizedPath = file.path.startsWith('/') ? file.path : `/${file.path}`;
-      if (!firstPath) firstPath = normalizedPath;
-      updatedFiles[normalizedPath] = file.content;
-    });
-    setFiles(updatedFiles);
-    // Focus the first created/modified file in the editor
-    if (firstPath) {
-      const content = typeof updatedFiles[firstPath] === 'string' 
-        ? updatedFiles[firstPath] as string 
-        : (updatedFiles[firstPath] as any)?.code || '';
-      setCurrentFile({ path: firstPath, content });
-    } else if (currentFile && updatedFiles[currentFile.path]) {
-      // Otherwise keep current file in sync if it changed
-      setCurrentFile({
-        path: currentFile.path, 
-        content: typeof updatedFiles[currentFile.path] === 'string' 
-          ? updatedFiles[currentFile.path] as string 
-          : (updatedFiles[currentFile.path] as any)?.code || ''
+    let firstContent: string | undefined;
+    setFiles(prevFiles => {
+      const next = { ...prevFiles } as SandpackProviderProps['files'];
+      newFiles.forEach(file => {
+        const normalizedPath = file.path.startsWith('/') ? file.path : `/${file.path}`;
+        if (!firstPath) {
+          firstPath = normalizedPath;
+          firstContent = file.content;
+        }
+        next[normalizedPath] = file.content;
       });
+      return next;
+    });
+    // Focus the first created/modified file in the editor using the incoming content (avoids race)
+    if (firstPath && typeof firstContent === 'string') {
+      setCurrentFile({ path: firstPath, content: firstContent });
     }
-  }, [files, currentFile]);
+  }, [setFiles]);
 
   const handleFileChange = useCallback((path: string, code: string) => {
     setFiles(prevFiles => ({
@@ -195,7 +190,7 @@ function HomeContent() {
         </div>
       }
       right={
-        <div className="h-full pt-16 pl-0 pr-0 pb-0">
+        <div className="h-full pt-16 pl-0 pr-3 pb-4">
           <SandboxPlayground 
             files={files} 
             onFilesChange={handleFileChange}

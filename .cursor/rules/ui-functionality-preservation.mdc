@@ -1,8 +1,6 @@
 ---
-alwaysApply: true
-description: "Preserve functionality when making UI changes - ensure no functions are removed or changed, automatically transfer existing functionality to new UI components"
+alwaysApply: false
 ---
-
 # UI-Funktionalitäts-Erhaltung
 
 ## Grundregel
