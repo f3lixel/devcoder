@@ -164,7 +164,9 @@ export function NewAIChat({
       const applyTodoDelta = (delta: any) => {
         setTodoPlan((prev) => {
           const current: TodoPlan = prev || { phase: "running", progress: { done: 0, total: 0 }, steps: [] };
-          let next: TodoPlan = { ...current, steps: [...current.steps.map((s) => ({ ...s }))] };
+          // Ensure steps is always an array to avoid TS 'possibly undefined' errors
+          const currentSteps = Array.isArray(current.steps) ? current.steps : [];
+          let next: TodoPlan = { ...current, steps: [...currentSteps.map((s) => ({ ...s }))] };
           if (delta?.phase) next.phase = delta.phase;
           if (delta?.progress) {
             next.progress = { ...next.progress, ...delta.progress } as any;
@@ -173,11 +175,13 @@ export function NewAIChat({
             next.steps = delta.replaceSteps as any;
           }
           if (delta?.upsertStep) {
+            next.steps = next.steps || [];
             const idx = next.steps.findIndex((s) => s.id === delta.upsertStep.id);
             if (idx >= 0) next.steps[idx] = { ...(next.steps[idx] as TodoStep), ...(delta.upsertStep as TodoStep) };
             else next.steps.push(delta.upsertStep as TodoStep);
           }
           if (delta?.updateStep && delta.updateStep.id) {
+            next.steps = next.steps || [];
             const idx = next.steps.findIndex((s) => s.id === delta.updateStep.id);
             if (idx >= 0) next.steps[idx] = { ...(next.steps[idx] as TodoStep), ...delta.updateStep } as any;
           }

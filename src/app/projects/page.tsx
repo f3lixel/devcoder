@@ -122,16 +122,19 @@ function HomeContent() {
     let firstPath: string | undefined;
     let firstContent: string | undefined;
     setFiles(prevFiles => {
-      const next = { ...prevFiles } as SandpackProviderProps['files'];
+  const safePrev = prevFiles || {};
+  // Use a plain record here to avoid narrowing/undefined issues from the Sandpack types
+  const next: Record<string, any> = { ...safePrev };
       newFiles.forEach(file => {
         const normalizedPath = file.path.startsWith('/') ? file.path : `/${file.path}`;
         if (!firstPath) {
           firstPath = normalizedPath;
           firstContent = file.content;
         }
+        // Always write the file content as a plain string (Sandpack accepts string or file objects)
         next[normalizedPath] = file.content;
       });
-      return next;
+      return next as SandpackProviderProps['files'];
     });
     // Focus the first created/modified file in the editor using the incoming content (avoids race)
     if (firstPath && typeof firstContent === 'string') {
@@ -141,9 +144,9 @@ function HomeContent() {
 
   const handleFileChange = useCallback((path: string, code: string) => {
     setFiles(prevFiles => ({
-      ...prevFiles,
+      ...(prevFiles || {}),
       [path]: code,
-    }));
+    } as SandpackProviderProps['files']));
     // Update current file if it's the one being edited
     if (currentFile?.path === path) {
       setCurrentFile({ path, content: code });
@@ -167,6 +170,19 @@ function HomeContent() {
     setCurrentFile({ path, content: content as string });
   }, [files]);
 
+  // Convert Sandpack files shape (which allows string | SandpackFile) into a simple map of path->string
+  // used by the chat UI. This avoids type errors where components expect Record<string,string>.
+  const filesForChat = useMemo(() => {
+    if (!files) return undefined;
+    const out: Record<string, string> = {};
+    Object.entries(files).forEach(([k, v]) => {
+      if (typeof v === 'string') out[k] = v;
+      else if (v && typeof (v as any).code === 'string') out[k] = (v as any).code;
+      else out[k] = String(v ?? '');
+    });
+    return out;
+  }, [files]);
+
   return (
     <ResizableSplit
       initialPercentLeft={30}
@@ -179,7 +195,7 @@ function HomeContent() {
               <NewAIChat
                 onNewFiles={handleNewFiles}
                 onRunCommand={handleRunCommand}
-                files={files}
+                files={filesForChat}
                 currentFile={currentFile}
                 terminalOutput={terminalOutput}
                 onFocusFile={handleFileSelect}
