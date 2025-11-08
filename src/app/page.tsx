@@ -4,9 +4,9 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import AuthPopup from "@/components/AuthPopup"
 import { supabaseBrowser } from "@/lib/supabase/client"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { AIInputWithSearch } from "@/components/ui/ai-input-with-search"
-import AnoAI from "@/components/ui/animated-shader-background"
+import { AuroraBackground } from "@/components/ui/aurora-background"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -20,6 +20,7 @@ import {
   Wand2,
   ChevronRight,
   Trash2,
+  PanelLeft,
 } from "lucide-react"
 
 type ProjectItem = { id: string; name: string }
@@ -32,6 +33,7 @@ export default function DashboardPage() {
   const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(null)
   const [deletePopoverOpen, setDeletePopoverOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const router = useRouter()
   const promptId = "dashboard-prompt"
   const supabase = supabaseBrowser()
@@ -104,13 +106,32 @@ export default function DashboardPage() {
 
   return (
     <>
-    <div className="relative flex min-h-[100dvh] bg-black text-white">
-      {/* Background Accents */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden"><AnoAI /></div>
+    {/* Sidebar toggle button - top left */}
+    <button
+      type="button"
+      aria-label={sidebarOpen ? "Sidebar schließen" : "Sidebar öffnen"}
+      aria-controls="dashboard-sidebar"
+      aria-expanded={sidebarOpen}
+      title={sidebarOpen ? "Sidebar schließen" : "Sidebar öffnen"}
+      onClick={() => setSidebarOpen((s) => !s)}
+      className="fixed left-3 top-3 z-[9999] rounded-lg border border-white/10 bg-white/10 p-2 text-white hover:bg-white/15"
+    >
+      <PanelLeft className="h-5 w-5" />
+    </button>
+    <div className="relative flex min-h-[100dvh] bg-[oklch(0.1653 0.0026 83.22)] text-white">
 
       {/* Sidebar: Projects */}
-      <aside className="w-64 shrink-0 border-r border-white/10 bg-white/5">
-        <div className="sticky top-0 p-4 pt-3">
+      <AnimatePresence initial={false}>
+      {sidebarOpen && (
+      <motion.aside
+        id="dashboard-sidebar"
+        className="fixed left-0 top-0 z-[2000] h-[100dvh] w-64 border-r border-white/10 bg-white/5"
+        initial={{ x: -260, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: -260, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30, mass: 0.8 }}
+      >
+        <div className="h-full overflow-y-auto p-4 pt-3">
           <div className="mb-4 flex items-center gap-3 px-1">
             <Image src="/logo.svg" alt="Felixel Logo" width={40} height={40} className="h-10 w-10" />
             <span className="text-[40px] leading-none font-medium text-white">Felixel</span>
@@ -159,7 +180,9 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-      </aside>
+  </motion.aside>
+      )}
+      </AnimatePresence>
 
       {/* Main: Hero + Prompt + Actions + Recent */}
       <main className="relative z-10 flex-1 p-6">
@@ -349,5 +372,3 @@ export default function DashboardPage() {
     </>
   )
 }
-
- 

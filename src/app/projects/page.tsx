@@ -78,7 +78,7 @@ button:hover {
 
 export default function Home() {
   return (
-    <div className="h-[100vh] w-full overflow-hidden flex" style={{backgroundColor: "rgba(0, 0, 3, 1)"}}>
+    <div className="h-[100vh] w-full overflow-hidden flex" style={{backgroundColor: "oklch(0.172 0 82.16)"}}>
       <div className="shrink-0">
         <ProjectsSidebar />
       </div>
@@ -111,12 +111,33 @@ function HomeContent() {
   const [files, setFiles] = useState<SandpackProviderProps['files']>(initialFiles);
   const [currentFile, setCurrentFile] = useState<{ path: string; content: string } | undefined>();
   const [terminalOutput, setTerminalOutput] = useState<string>("");
+  const [didInitialSync, setDidInitialSync] = useState(false);
 
   useEffect(() => {
     try {
       localStorage.setItem(storageKey, JSON.stringify(files));
     } catch {}
   }, [files, storageKey]);
+
+  // One-time initial sync of existing files to Supabase so the agent sees the real project state
+  useEffect(() => {
+    if (!projectId || didInitialSync) return;
+    try {
+      const payload: Array<{ path: string; content: string }> = [];
+      Object.entries(files || {}).forEach(([path, val]) => {
+        const code = typeof val === 'string' ? val : (val as any)?.code ?? '';
+        payload.push({ path, content: String(code) });
+      });
+      if (payload.length > 0) {
+        fetch(`/api/projects/${projectId}/files`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ files: payload }),
+        }).catch(() => {});
+        setDidInitialSync(true);
+      }
+    } catch {}
+  }, [projectId, files, didInitialSync]);
 
   const handleNewFiles = useCallback((newFiles: Array<{ path: string; content: string }>) => {
     let firstPath: string | undefined;
@@ -140,6 +161,16 @@ function HomeContent() {
     if (firstPath && typeof firstContent === 'string') {
       setCurrentFile({ path: firstPath, content: firstContent });
     }
+    // Persist files to server (Supabase) so the agent has an up-to-date project view
+    if (projectId && newFiles.length > 0) {
+      try {
+        fetch(`/api/projects/${projectId}/files`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ files: newFiles }),
+        }).catch(() => {});
+      } catch {}
+    }
   }, [setFiles]);
 
   const handleFileChange = useCallback((path: string, code: string) => {
@@ -151,7 +182,17 @@ function HomeContent() {
     if (currentFile?.path === path) {
       setCurrentFile({ path, content: code });
     }
-  }, [currentFile]);
+    // Persist single file change
+    if (projectId) {
+      try {
+        fetch(`/api/projects/${projectId}/files`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ files: [{ path, content: code }] }),
+        }).catch(() => {});
+      } catch {}
+    }
+  }, [currentFile, projectId]);
 
   // Handler for running terminal commands
   const handleRunCommand = useCallback(async (command: string): Promise<{ output: string; error?: string }> => {

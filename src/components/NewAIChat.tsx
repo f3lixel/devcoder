@@ -3,15 +3,13 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Message, MessageContent, MessageAvatar } from "@/components/ai-elements/message";
 import { Conversation, ConversationContent, ConversationEmptyState, ConversationScrollButton } from "@/components/ai-elements/conversation";
-import { PromptInput, PromptInputBody, PromptInputTextarea, PromptInputToolbar, PromptInputTools, PromptInputSubmit, PromptInputAttachments, PromptInputAttachment, type PromptInputMessage } from "@/components/ai-elements/prompt-input";
+import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import { Response } from "@/components/ai-elements/response";
-import { Loader } from "@/components/ai-elements/loader";
-import { cn } from "@/lib/utils";
-import type { UIMessage } from "ai";
+import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
 import { nanoid } from "nanoid";
 import { usePathname, useSearchParams } from "next/navigation";
 import StatusBadge from "@/components/StatusBadge";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { AI_Prompt } from "@/components/ui/animated-ai-input";
 import { AITodoPlan, type TodoPlan, type TodoStep } from "@/components/ai-todo-plan";
 
 interface NewAIChatProps {
@@ -51,6 +49,7 @@ export function NewAIChat({
   const [errors, setErrors] = useState<string[]>([]);
   const [lastErrorDetail, setLastErrorDetail] = useState<string | null>(null);
   const [todoPlan, setTodoPlan] = useState<TodoPlan | null>(null);
+  const [sessionMemory, setSessionMemory] = useState<string>('');
   const abortControllerRef = useRef<AbortController | null>(null);
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -65,38 +64,112 @@ export function NewAIChat({
     return null;
   })();
 
-  const extractFilesFromMessage = useCallback((text: string): Array<{ path: string; content: string; type?: string }> => {
-    const files: Array<{ path: string; content: string; type?: string }> = [];
+  // Load session memory (local + server) when project changes
+  useEffect(() => {
+    if (!projectId) return;
+    try {
+      const local = localStorage.getItem(`project:${projectId}:memory:v1`);
+      if (local) setSessionMemory(local);
+    } catch {}
+    // Try server memory (soft fail if route/table missing)
+    fetch(`/api/projects/${projectId}/memory`, { method: 'GET' })
+      .then(r => r.ok ? r.json() : null)
+      .then((j) => { if (j && typeof j.memory === 'string' && j.memory.trim()) setSessionMemory(j.memory); })
+      .catch(() => {});
+  }, [projectId]);
+
+  const extractFilesFromMessage = useCallback((text: string): { files: Array<{ path: string; content: string; type?: string }>; cleanedText: string } => {
+    if (!text) return { files: [], cleanedText: text };
+
     const fenceRe = /```([^\n]*)\n([\s\S]*?)```/g;
-    let match;
+    const rawMatches: Array<{ match: RegExpExecArray; header: string; body: string }> = [];
+    let match: RegExpExecArray | null;
 
     while ((match = fenceRe.exec(text)) !== null) {
-      const header = match[1]?.trim() || '';
-      const content = match[2]?.trim() || '';
-      
-      // Try to extract path from header
-      let filePath: string | null = null;
-      
-      // Look for explicit path declarations
-      const explicitPathMatch = header.match(/(?:file(?:name)?|path)[:=]\s*([^\s]+)/i);
-      if (explicitPathMatch?.[1]) {
-        filePath = explicitPathMatch[1];
-      } else {
-        // Look for file extensions in header
-        const extensionMatch = header.match(/([\w./-]+\.(?:tsx?|jsx?|mjs|cjs|css|html?|json|md|txt|sh|ya?ml|toml))\b/);
-        if (extensionMatch?.[1]) {
-          filePath = extensionMatch[1];
-        }
-      }
-      
-      if (filePath) {
-        const normalizedPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
-        const type = getFileType(normalizedPath);
-        files.push({ path: normalizedPath, content, type });
-      }
+      rawMatches.push({ match, header: match[1]?.trim() || '', body: match[2]?.trim() || '' });
     }
 
-    return files;
+    const extractPathFromHeader = (header: string): string | null => {
+      const kv = header.match(/(?:file(?:name)?|path)[:=]\s*([^\s]+)/i);
+      if (kv?.[1]) return kv[1].trim();
+      const fileInHeader = header.match(/([\w./-]+\.(?:tsx?|jsx?|mjs|cjs|css|html?|json|md|txt|sh|ya?ml|toml))\b/);
+      return fileInHeader?.[1] || null;
+    };
+
+    const extractPathFromBody = (body: string): { path: string; content: string } | null => {
+      const lines = body.split('\n');
+      const clean = (raw: string) => {
+        let s = raw.trim();
+        // strip common comment starters
+        s = s.replace(/^\s*<!--\s*/, '');
+        s = s.replace(/^\s*\/\*+\s*/, '');
+        s = s.replace(/^\s*\/\/\s*/, '');
+        s = s.replace(/^\s*#\s*/, '');
+        s = s.replace(/^\s*--\s*/, '');
+        s = s.replace(/^\s*;\s*/, '');
+        s = s.replace(/^\s*\*\s*/, '');
+        // strip common comment enders
+        s = s.replace(/\s*\*\/\s*$/, '');
+        s = s.replace(/\s*-->\s*$/, '');
+        return s.trim();
+      };
+      for (let i = 0; i < Math.min(5, lines.length); i++) {
+        const line = clean(lines[i]);
+        // 1) labeled path (allow optional ':' or '='), accept file|filename|filepath|file path|path
+        const m = line.match(/^(?:file(?:\s*path)?|filename|filepath|path)\s*[:=]?\s*([^\s]+)$/i);
+        if (m?.[1]) {
+          return { path: m[1].trim(), content: [...lines.slice(0, i), ...lines.slice(i + 1)].join('\n') };
+        }
+        // 2) any absolute path within the line (e.g., "<!-- /src/App.tsx -->" or "/* /src/x.ts */")
+        const bareAny = line.match(/\/(?:[A-Za-z0-9._\-\/]+)\.(?:tsx?|jsx?|mjs|cjs|css|html?|json|md|txt|ya?ml|toml)/);
+        if (bareAny?.[0]) {
+          return { path: bareAny[0], content: [...lines.slice(0, i), ...lines.slice(i + 1)].join('\n') };
+        }
+      }
+      return null;
+    };
+
+    const normalizePath = (p: string): string => {
+      let normalized = p.trim().replace(/^["`']|["`']$/g, '').replace(/^\[|\]$/g, '').trim();
+      return normalized.startsWith('/') ? normalized : `/${normalized}`;
+    };
+
+  let cleanedText = text;
+  let tempCounter = 1;
+    const processed: Array<{ path: string; content: string; type: string; index: number }> = [];
+
+    for (let i = rawMatches.length - 1; i >= 0; i--) {
+      const { match, header, body } = rawMatches[i];
+      let filePath = extractPathFromHeader(header);
+      let content = body;
+      if (!filePath) {
+        const fromBody = extractPathFromBody(body);
+        if (fromBody) { filePath = fromBody.path; content = fromBody.content; }
+      }
+      let fileType = '';
+      if (filePath) {
+        fileType = getFileType(filePath);
+      } else if (header) {
+        // try language token as type
+        fileType = (header.split(/\s+/)[0] || '').toLowerCase();
+      }
+      if (!filePath) {
+        // Fallback: fabricate a path based on inferred type
+        const ext = fileType === 'tsx' ? 'tsx' : fileType === 'ts' ? 'ts' : fileType === 'jsx' ? 'jsx' : fileType === 'html' ? 'html' : fileType === 'css' ? 'css' : 'js';
+        filePath = `/temp-ai-code-${tempCounter++}.${ext}`;
+      }
+      const path = normalizePath(filePath);
+      processed.push({ path, content, type: fileType || getFileType(path), index: match.index });
+      cleanedText = cleanedText.slice(0, match.index) + cleanedText.slice(match.index + match[0].length);
+    }
+
+    const filesMap = new Map<string, { path: string; content: string; type?: string }>();
+    processed
+      .sort((a, b) => a.index - b.index)
+      .forEach(({ path, content, type }) => filesMap.set(path, { path, content, type }));
+
+    cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n').trim();
+    return { files: Array.from(filesMap.values()), cleanedText };
   }, []);
 
   const getFileType = (path: string): string => {
@@ -189,6 +262,10 @@ export function NewAIChat({
         });
       };
 
+  // Track code blocks already extracted during streaming
+  const seenCodeBlocks = new Set<string>();
+  let streamTempCounter = 1;
+
       const processToolBlocks = () => {
         // Look for fenced blocks like ```tool: todo-plan\n{...}\n```
         const re = /```tool:\s*todo-plan\n([\s\S]*?)```/g;
@@ -222,22 +299,112 @@ export function NewAIChat({
           partial = rawText;
           setStreamingMessage(partial);
         }
+
+        // Additionally, extract code blocks with identifiable file paths and forward them to onNewFiles mid-stream
+        const codeRe = /```([^\n]*)\n([\s\S]*?)```/g;
+        const newlyExtracted: Array<{ path: string; content: string; type?: string }> = [];
+        let cm: RegExpExecArray | null;
+        const normalizePath = (p: string): string => (p.startsWith('/') ? p : `/${p}`);
+        while ((cm = codeRe.exec(rawText)) !== null) {
+          const full = cm[0];
+          if (seenCodeBlocks.has(full)) continue;
+          const header = cm[1]?.trim() || '';
+          let body = cm[2] ?? '';
+          // Try header first
+          let filePath: string | null = null;
+          const kv = header.match(/(?:file(?:name)?|path)[:=]\s*([^\s]+)/i);
+          if (kv?.[1]) filePath = kv[1].trim();
+          if (!filePath) {
+            const m2 = header.match(/([\w./-]+\.(?:tsx?|jsx?|mjs|cjs|css|html?|json|md|txt|ya?ml|toml))\b/);
+            if (m2?.[1]) filePath = m2[1];
+          }
+          // Try first lines of body for path
+          if (!filePath) {
+            const lines = body.split('\n');
+            const clean = (raw: string) => {
+              let s = raw.trim();
+              s = s.replace(/^\s*<!--\s*/, '');
+              s = s.replace(/^\s*\/\*+\s*/, '');
+              s = s.replace(/^\s*\/\/\s*/, '');
+              s = s.replace(/^\s*#\s*/, '');
+              s = s.replace(/^\s*--\s*/, '');
+              s = s.replace(/^\s*;\s*/, '');
+              s = s.replace(/^\s*\*\s*/, '');
+              s = s.replace(/\s*\*\/\s*$/, '');
+              s = s.replace(/\s*-->\s*$/, '');
+              return s.trim();
+            };
+            for (let i = 0; i < Math.min(5, lines.length); i++) {
+              const ln = clean(lines[i]);
+              const pm = ln.match(/^(?:file(?:\s*path)?|filename|filepath|path)\s*[:=]?\s*([^\s]+)$/i);
+              if (pm?.[1]) {
+                filePath = pm[1].trim();
+                body = [...lines.slice(0, i), ...lines.slice(i + 1)].join('\n');
+                break;
+              }
+              // bare absolute path anywhere in the line
+              const bare = ln.match(/\/(?:[A-Za-z0-9._\-\/]+)\.(?:tsx?|jsx?|mjs|cjs|css|html?|json|md|txt|ya?ml|toml)/);
+              if (bare?.[0]) {
+                filePath = bare[0];
+                body = [...lines.slice(0, i), ...lines.slice(i + 1)].join('\n');
+                break;
+              }
+            }
+          }
+          if (!filePath) {
+            // Fallback fabricate path using header language as extension
+            const lang = (header.split(/\s+/)[0] || '').toLowerCase();
+            const ext = lang === 'tsx' ? 'tsx' : lang === 'ts' ? 'ts' : lang === 'jsx' ? 'jsx' : lang === 'html' ? 'html' : lang === 'css' ? 'css' : 'js';
+            filePath = `/temp-ai-code-${streamTempCounter++}.${ext}`;
+          }
+          const path = normalizePath(filePath);
+          const type = getFileType(path);
+          newlyExtracted.push({ path, content: body.trim(), type });
+          seenCodeBlocks.add(full);
+          rawText = rawText.replace(full, '');
+          changed = true;
+        }
+        if (newlyExtracted.length > 0) {
+          partial = rawText;
+          setStreamingMessage(partial);
+          onNewFiles?.(newlyExtracted);
+        }
       };
 
       const systemPrompt = (() => {
         try { return localStorage.getItem('ai-system-prompt') || undefined; } catch { return undefined; }
       })();
 
-      const res = await fetch("/api/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, goal: message.text || "", system: systemPrompt }),
-        signal: abortController.signal,
-      });
+      // Build absolute URL fallback if running from file:// (e.g. desktop preview) to avoid Failed to fetch
+      const buildApiUrl = (path: string) => {
+        try {
+          if (typeof window !== 'undefined') {
+            const origin = window.location.origin;
+            if (origin && origin.startsWith('http')) return origin + path;
+          }
+        } catch {}
+        // Default dev fallback
+        return 'http://localhost:3000' + path;
+      };
+
+      const requestUrl = buildApiUrl('/api/ai');
+      let res: Response;
+      try {
+        res = await fetch(requestUrl, {
+          method: "POST",
+            headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectId, goal: message.text || "", system: systemPrompt, memory: sessionMemory, useWorkflow: true }),
+          signal: abortController.signal,
+        });
+      } catch (netErr: any) {
+        // Network-level failure (TypeError: Failed to fetch) — surface clearer error
+        throw new Error(`Netzwerkfehler beim Aufruf ${requestUrl}: ${netErr?.message || 'Failed to fetch'}`);
+      }
 
       if (!res.ok) {
-        const err = await res.text().catch(() => "");
-        throw new Error(`Chat API failed: ${res.status} ${err}`);
+        const errText = await res.text().catch(() => "");
+        // Provide structured hint for UI / debugging
+        throw new Error(`Chat API failed: status=${res.status} url=${requestUrl} body=${errText}`);
       }
       if (!res.body) throw new Error("Kein Stream-Body von /api/agent/coding");
 
@@ -333,20 +500,36 @@ export function NewAIChat({
         finalText = "Es tut mir leid, ich konnte keine Antwort generieren. Bitte versuchen Sie es erneut.";
       }
 
+      const assistantExtract = extractFilesFromMessage(finalText);
       const assistantMessage: ChatMessage = {
         id: nanoid(),
         role: "assistant",
-        content: finalText,
+        content: assistantExtract.cleanedText || finalText,
         timestamp: new Date(),
       };
 
-      const extractedFiles = extractFilesFromMessage(finalText);
-      if (extractedFiles.length > 0) {
-        assistantMessage.files = extractedFiles;
-        onNewFiles?.(extractedFiles);
+      if (assistantExtract.files.length > 0) {
+        assistantMessage.files = assistantExtract.files;
+        onNewFiles?.(assistantExtract.files);
       }
 
       setMessages(prev => [...prev, assistantMessage]);
+      // Update session memory: keep compact, include latest goal, file paths, and first sentence of reply
+      try {
+        const paths = (assistantExtract.files || []).map(f => f.path).slice(0, 8);
+        const firstSentence = (assistantExtract.cleanedText || finalText || '').split(/(?<=[.!?])\s+/)[0]?.slice(0, 240) || '';
+        const block = [
+          `Goal: ${message.text || ''}`,
+          paths.length ? `Files: ${paths.join(', ')}` : undefined,
+          firstSentence ? `Reply: ${firstSentence}` : undefined,
+        ].filter(Boolean).join('\n');
+        const combined = [sessionMemory.trim(), block.trim()].filter(Boolean).join('\n\n').slice(-2000);
+        setSessionMemory(combined);
+        try { localStorage.setItem(`project:${projectId}:memory:v1`, combined); } catch {}
+        if (projectId) {
+          fetch(`/api/projects/${projectId}/memory`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ memory: combined }) }).catch(() => {});
+        }
+      } catch {}
   setStatus("idle");
       setStreamingMessage("");
 
@@ -377,7 +560,7 @@ export function NewAIChat({
     } finally {
       abortControllerRef.current = null;
     }
-  }, [messages, onNewFiles, extractFilesFromMessage, projectId]);
+  }, [messages, onNewFiles, extractFilesFromMessage, projectId, sessionMemory]);
 
   const handleCancel = useCallback(() => {
     if (abortControllerRef.current) {
@@ -395,7 +578,7 @@ export function NewAIChat({
   }, []);
 
   return (
-    <div className="flex h-full flex-col" style={{ backgroundColor: "rgba(0, 0, 3, 1)" }}>
+    <div className="flex h-full flex-col" style={{ backgroundColor: "oklch(0.172 0 82.16)" }}>
       <Conversation className="flex-1">
         <ConversationContent className="space-y-6">
           {/* Live Todo Plan */}
@@ -450,14 +633,16 @@ export function NewAIChat({
                     name="AI"
                   />
                   <MessageContent variant="flat">
-                    <div className="flex items-start gap-2">
-                      {streamingMessage ? (
+                    <div className="flex flex-col gap-3 w-full">
+                      <Reasoning
+                        className="w-full"
+                        isStreaming={status === "streaming"}
+                      >
+                        <ReasoningTrigger />
+                        <ReasoningContent>{reasoningStream}</ReasoningContent>
+                      </Reasoning>
+                      {streamingMessage && (
                         <Response>{streamingMessage}</Response>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <Loader size={16} />
-                          <span className="text-sm text-muted-foreground">Denkt nach...</span>
-                        </div>
                       )}
                     </div>
                   </MessageContent>
@@ -470,7 +655,7 @@ export function NewAIChat({
       </Conversation>
 
       {/* Reasoning panel and errors */}
-      {(showReasoning || reasoningStream.length > 0 || errors.length > 0) && (
+      {false && (
         <div className="border-t border-white/10 px-3 py-2">
           <div className="flex items-center justify-between">
             <button
@@ -511,48 +696,7 @@ export function NewAIChat({
             <StatusBadge status={status === "error" ? "error" : status === "streaming" ? "running" : "idle"} label={status === "error" ? "AI Fehler" : status === "streaming" ? "AI denkt…" : "AI bereit"} />
           </div>
         </div>
-        <PromptInput
-          accept="image/*"
-          multiple
-          maxFiles={5}
-          maxFileSize={10 * 1024 * 1024} // 10MB
-          onSubmit={handleSubmit}
-          onError={(err) => console.error("File upload error:", err)}
-        >
-          <PromptInputAttachments>
-            {(attachment) => <PromptInputAttachment data={attachment} />}
-          </PromptInputAttachments>
-          
-          <PromptInputBody>
-            <PromptInputTextarea
-              placeholder={
-                status === "streaming"
-                  ? "Warte auf Antwort..."
-                  : "Fragen Sie etwas über Ihren Code oder bitten Sie um Hilfe..."
-              }
-              disabled={status === "streaming"}
-            />
-          </PromptInputBody>
-          
-          <PromptInputToolbar>
-            <PromptInputTools>
-              {/* Add attachment and other tools here if needed */}
-            </PromptInputTools>
-            
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="motion-safe:hover:-translate-y-px transition-transform">
-                  <PromptInputSubmit
-                    status={status === "streaming" ? "streaming" : status === "error" ? "error" : undefined}
-                    disabled={status === "streaming"}
-                    onClick={status === "streaming" ? handleCancel : undefined}
-                  />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="top">Senden (Enter) · Abbrechen (Esc)</TooltipContent>
-            </Tooltip>
-          </PromptInputToolbar>
-        </PromptInput>
+        <AI_Prompt onSubmit={handleSubmit} disabled={status === "streaming"} />
       </div>
     </div>
   );

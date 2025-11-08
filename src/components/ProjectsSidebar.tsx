@@ -98,7 +98,7 @@ export default function ProjectsSidebar() {
     <Sidebar>
       <SidebarBody
         className={cn(
-          "relative !pt-16 bg-[rgba(0,0,3,1)] backdrop-blur-0 border-r border-white/10 rounded-none",
+          "relative !pt-16 bg-[oklch(0.172 0 82.16)] backdrop-blur-0 border-r border-white/10 rounded-none",
           "text-neutral-200"
         )}
       >
@@ -140,7 +140,7 @@ export default function ProjectsSidebar() {
       </SidebarBody>
       {/* AI Custom Instruction Dialog */}
       <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
-        <DialogContent className="sm:max-w-lg bg-[rgba(0,0,3,1)] border border-white/10">
+        <DialogContent className="sm:max-w-lg bg-[oklch(0.172 0 82.16)] border border-white/10">
           <DialogHeader>
             <DialogTitle className="text-neutral-100">AI Custom Instruction</DialogTitle>
             <DialogDescription className="text-neutral-400">
@@ -226,7 +226,7 @@ function RecentChatsPanel({ recentChats }: { recentChats: string[] }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="mt-2 h-[220px] w-full bg-[rgba(0,0,3,1)] relative flex items-center justify-center"
+            className="mt-2 h-[220px] w-full bg-[oklch(0.172 0 82.16)] relative flex items-center justify-center"
           >
             <motion.span
               layoutId="recentChatsTitle"
@@ -333,6 +333,3 @@ function FooterSettings() {
     </motion.div>
   );
 }
-
-
-

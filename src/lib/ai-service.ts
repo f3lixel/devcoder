@@ -388,14 +388,32 @@ Output requirements (STRICT):
     // Helper to extract path from body
     const extractPathFromBody = (body: string): { path: string; content: string } | null => {
       const lines = body.split('\n');
-      for (let i = 0; i < Math.min(3, lines.length); i++) {
-        const line = lines[i].trim()
-          .replace(/^[\s/*#-]+|\s*-->\s*$/g, '');
-        
-        const match = line.match(/^(?:file|filename|path)[:=]\s*([^\s]+)/i);
+      const clean = (raw: string) => {
+        let s = raw.trim();
+        s = s.replace(/^\s*<!--\s*/, '');
+        s = s.replace(/^\s*\/\*+\s*/, '');
+        s = s.replace(/^\s*\/\/\s*/, '');
+        s = s.replace(/^\s*#\s*/, '');
+        s = s.replace(/^\s*--\s*/, '');
+        s = s.replace(/^\s*;\s*/, '');
+        s = s.replace(/^\s*\*\s*/, '');
+        s = s.replace(/\s*\*\/\s*$/, '');
+        s = s.replace(/\s*-->\s*$/, '');
+        return s.trim();
+      };
+      for (let i = 0; i < Math.min(5, lines.length); i++) {
+        const line = clean(lines[i]);
+        const match = line.match(/^(?:file(?:\s*path)?|filename|filepath|path)\s*[:=]?\s*([^\s]+)$/i);
         if (match?.[1]) {
           return {
             path: match[1].trim(),
+            content: [...lines.slice(0, i), ...lines.slice(i + 1)].join('\n')
+          };
+        }
+        const bare = line.match(/\/(?:[A-Za-z0-9._\-\/]+)\.(?:tsx?|jsx?|mjs|cjs|css|html?|json|md|txt|ya?ml|toml)/);
+        if (bare?.[0]) {
+          return {
+            path: bare[0],
             content: [...lines.slice(0, i), ...lines.slice(i + 1)].join('\n')
           };
         }

@@ -25,6 +25,12 @@ export const codingAgent = new Agent({
 
 You build and edit code directly in the user's project files (persisted in Supabase) that power a Sandpack live preview. There is no OS shell and no external sandbox. All code must be browser-compatible and runnable in Sandpack. Use the provided file tools to create and modify files.
 
+## Output & UX Guidelines (Important)
+
+- Prefer using the file tools (writeProjectFile / writeProjectFiles / deleteProjectFile) to apply changes. Do NOT dump full file contents as code blocks in the chat unless explicitly requested.
+- Summarize the changes briefly in chat. The UI will reflect file updates in the sandbox automatically.
++- If you must show code, include an explicit path in the code fence header, e.g.: tsx path:/src/components/Sidebar.tsx (followed by the code). This helps the UI parse it reliably.
+
 ## Core Capabilities
 
 You have access to a complete development toolkit:

@@ -135,19 +135,67 @@ export default function SandboxPlayground({
     }
 
     // Ensure Sandpack minimal boot files exist for template="react"
+    if (!(next as any)['/package.json']) {
+      (next as any)['/package.json'] = JSON.stringify({
+        name: 'sandbox-app',
+        private: true,
+        version: '0.0.0',
+        type: 'module',
+        dependencies: {
+          react: '^18.2.0',
+          'react-dom': '^18.2.0'
+        }
+      }, null, 2);
+    } else {
+      // Normalize provided package.json to React 18 for Sandpack compatibility
+      try {
+        const raw = (next as any)['/package.json'];
+        const pkg = typeof raw === 'string' ? JSON.parse(raw) : JSON.parse(String((raw as any)?.code ?? '{}'));
+        pkg.dependencies = pkg.dependencies || {};
+        const reactVer: string = String(pkg.dependencies.react || '');
+        const reactDomVer: string = String(pkg.dependencies['react-dom'] || '');
+        const needsAdjust = /^(19|canary|beta|rc)/.test(reactVer) || /^(19|canary|beta|rc)/.test(reactDomVer) || !reactVer || !reactDomVer;
+        if (needsAdjust) {
+          pkg.dependencies.react = '^18.2.0';
+          pkg.dependencies['react-dom'] = '^18.2.0';
+          (next as any)['/package.json'] = JSON.stringify(pkg, null, 2);
+        }
+      } catch {}
+    }
     if (!(next as any)['/public/index.html']) {
       (next as any)['/public/index.html'] = `<!DOCTYPE html>\n<html lang="en">\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>Sandbox</title>\n  </head>\n  <body>\n    <div id="root"></div>\n  </body>\n</html>\n`;
     }
     if (!(next as any)['/styles.css']) {
       (next as any)['/styles.css'] = `/* default styles */\nhtml,body,#root{height:100%}\nbody{font-family:system-ui, sans-serif;margin:0;background:#0a0a0a;color:#e5e5e5}\n`;
     }
-    // If no explicit index entry exists, create one that mounts App from either /App.tsx or /App.js
+    // If no explicit index entry exists, create one that points to common app patterns
     if (!(next as any)['/index.js']) {
-      const hasTsx = Boolean((next as any)['/App.tsx']);
-      const appImport = hasTsx ? "./App" : ( (next as any)['/App.js'] ? "./App" : null );
-      (next as any)['/index.js'] = `import React from 'react'\nimport { createRoot } from 'react-dom/client'\n${appImport ? `import App from '${appImport}'\n` : ''}import './styles.css'\nconst root = createRoot(document.getElementById('root'))\nroot.render(<React.StrictMode>${appImport ? '<App />' : '<div />'}</React.StrictMode>)\n`;
+      const hasAppRoot = Boolean((next as any)['/App.tsx'] || (next as any)['/App.js']);
+      const hasSrcApp = Boolean((next as any)['/src/App.tsx'] || (next as any)['/src/App.jsx']);
+      const hasMainTsx = Boolean((next as any)['/src/main.tsx']);
+      const hasMainJsx = Boolean((next as any)['/src/main.jsx']);
+      const hasSrcIndexTsx = Boolean((next as any)['/src/index.tsx']);
+      const hasSrcIndexJsx = Boolean((next as any)['/src/index.jsx']);
+
+      let indexCode = '';
+      if (hasMainTsx) {
+        indexCode = `import './styles.css'\nimport './src/main.tsx'\n`;
+      } else if (hasMainJsx) {
+        indexCode = `import './styles.css'\nimport './src/main.jsx'\n`;
+      } else if (hasSrcIndexTsx) {
+        indexCode = `import './styles.css'\nimport './src/index.tsx'\n`;
+      } else if (hasSrcIndexJsx) {
+        indexCode = `import './styles.css'\nimport './src/index.jsx'\n`;
+      } else if (hasSrcApp) {
+        indexCode = `import React from 'react'\nimport { createRoot } from 'react-dom/client'\nimport App from './src/App'\nimport './styles.css'\nconst root = createRoot(document.getElementById('root'))\nroot.render(<React.StrictMode><App /></React.StrictMode>)\n`;
+      } else if (hasAppRoot) {
+        indexCode = `import React from 'react'\nimport { createRoot } from 'react-dom/client'\nimport App from './App'\nimport './styles.css'\nconst root = createRoot(document.getElementById('root'))\nroot.render(<React.StrictMode><App /></React.StrictMode>)\n`;
+      } else {
+        indexCode = `import React from 'react'\nimport { createRoot } from 'react-dom/client'\nimport './styles.css'\nconst root = createRoot(document.getElementById('root'))\nroot.render(<React.StrictMode><div>Sandbox Ready</div></React.StrictMode>)\n`;
+      }
+      (next as any)['/index.js'] = indexCode;
     }
-    if (!(next as any)['/App.js'] && !(next as any)['/App.tsx']) {
+    if (!(next as any)['/App.js'] && !(next as any)['/App.tsx'] && !(next as any)['/src/main.tsx'] && !(next as any)['/src/index.tsx']) {
       (next as any)['/App.js'] = `export default function App(){ return <h1>Sandbox Ready</h1> }\n`;
     }
 
@@ -232,7 +280,7 @@ export default function SandboxPlayground({
   }, [onFileSelect]);
 
   return (
-    <div className={"felixel-editor-tight h-full w-full p-0 m-0 " + (isFullscreen ? "fixed inset-0 z-[100] bg-[#0a0a0a]" : "") } ref={previewContainerRef}>
+    <div className={"felixel-editor-tight h-full w-full p-0 m-0 " + (isFullscreen ? "fixed inset-0 z-[100] bg-[oklch(0.172 0 82.16)]" : "") } ref={previewContainerRef}>
       <SandboxProvider
         template="react"
         files={normalizedFiles}
@@ -245,9 +293,9 @@ export default function SandboxPlayground({
         }}
       >
         {/* Custom header matching the screenshot with eye/code tab switch */}
-        <SandboxTabs defaultValue="code" className="h-full p-0 rounded-2xl border border-[#1a1a1a] bg-[#0a0a0a] text-neutral-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)]">
+        <SandboxTabs defaultValue="code" className="h-full p-0 rounded-2xl border border-[#1a1a1a] bg-[oklch(0.172 0 82.16)] text-neutral-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)]">
           {/* Top bar */}
-          <div className="h-[45px] flex items-center gap-2 px-2 border-b border-[#1a1a1a] bg-[#0b0b0b]">
+          <div className="h-[45px] flex items-center gap-2 px-2 border-b border-[#1a1a1a] bg-[oklch(0.172 0 82.16)]">
             {/* Left controls (double chevrons like screenshot) */}
             <div className="flex items-center gap-1 px-1">
               <button type="button" className="h-7 w-7 inline-flex items-center justify-center rounded-md text-neutral-400 hover:text-white hover:bg-white/5" aria-label="Zurück">
@@ -261,14 +309,14 @@ export default function SandboxPlayground({
             {/* Eye / Code tab switches */}
             <div className="flex items-center">
               <div className="inline-flex h-8 items-center rounded-md border border-white/10 bg-[#141414] overflow-hidden">
-                <SandboxTabsTrigger value="preview" className="h-8 w-10 p-0 rounded-none text-neutral-400 data-[state=active]:text-white data-[state=active]:bg-[#0b0b0b]">
+                <SandboxTabsTrigger value="preview" className="h-8 w-10 p-0 rounded-none text-neutral-400 data-[state=active]:text-white data-[state=active]:bg-[oklch(0.172 0 82.16)]">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-eye-icon lucide-eye">
                     <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
                     <circle cx="12" cy="12" r="3" />
                   </svg>
                 </SandboxTabsTrigger>
                 <div className="h-8 w-px bg-white/10" />
-                <SandboxTabsTrigger value="code" className="h-8 w-10 p-0 rounded-none text-neutral-400 data-[state=active]:text-white data-[state=active]:bg-[#0b0b0b]">
+                <SandboxTabsTrigger value="code" className="h-8 w-10 p-0 rounded-none text-neutral-400 data-[state=active]:text-white data-[state=active]:bg-[oklch(0.172 0 82.16)]">
                   <Code2 size={16} />
                 </SandboxTabsTrigger>
               </div>

@@ -21,7 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head />
-      <body className={`${tasa.variable} ${tasa.className} antialiased min-h-screen bg-black text-white`}>
+      <body className={`${tasa.variable} ${tasa.className} antialiased min-h-screen bg-[oklch(0.1653 0.0026 83.22)] text-white`}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <ViewModeProvider>
             <ProjectProvider>

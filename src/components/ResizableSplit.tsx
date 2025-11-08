@@ -109,7 +109,7 @@ export default function ResizableSplit({
   );
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ width: "100%", justifyContent: "flex-start", alignItems: "center", backgroundColor: "rgba(0, 0, 3, 1)" }}>
+    <div className="flex h-screen overflow-hidden" style={{ width: "100%", justifyContent: "flex-start", alignItems: "center", backgroundColor: "oklch(0.172 0 82.16)" }}>
       <div
         className="relative h-full"
         style={{ width: `${percentLeft}%` }}
