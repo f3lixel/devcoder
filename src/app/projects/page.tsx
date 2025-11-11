@@ -229,7 +229,7 @@ function HomeContent() {
       initialPercentLeft={30}
       minPercentLeft={20}
       left={
-        <div className="h-full p-3 pr-2 flex pt-16 pb-0">
+        <div className="h-full p-3 pr-2 flex pt-16 pb-4">
           <div className="h-full flex-1 min-w-0 rounded-2xl overflow-hidden">
             <Suspense fallback={null}>
               {/* New AI Chat Interface */}

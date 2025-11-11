@@ -4,6 +4,29 @@ import { redirect } from "next/navigation";
 import { slugify } from "@/lib/slug";
 import { supabaseService } from "@/lib/supabase/service";
 
+type SeedFile = { path: string; content: string };
+
+async function loadTemplateFromStorage(prefix: string = 'templates/next16'): Promise<SeedFile[]> {
+  const svc = supabaseService();
+  const bucket = 'project-files';
+  const manifestPath = `${prefix}/manifest.json`;
+  const { data: manifestObj, error: manifestErr } = await svc.storage.from(bucket).download(manifestPath);
+  if (manifestErr || !manifestObj) {
+    return [];
+  }
+  const manifestText = await manifestObj.text();
+  const manifest = JSON.parse(manifestText) as { files: string[] };
+  const files: SeedFile[] = [];
+  for (const rel of manifest.files) {
+    const fileKey = `${prefix}/${rel}`;
+    const { data, error } = await svc.storage.from(bucket).download(fileKey);
+    if (error || !data) continue;
+    const content = await data.text();
+    files.push({ path: `/${rel}`, content });
+  }
+  return files;
+}
+
 export async function createProject(_: any, formData: FormData) {
   const supabase = await supabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -26,49 +49,73 @@ export async function createProject(_: any, formData: FormData) {
   const svc = supabaseService();
   try {
     if (STORAGE_VARIANT === 'A') {
-      // Variante A: eigener Bucket pro Projekt
-      // Bucket-Name: project-{projectId}
       const bucketId = `project-${data.id}`;
-      // Create bucket if not exists
       await svc.storage.createBucket(bucketId, { public: false });
-      // Basisstruktur anlegen (Ordner via zero-byte uploads)
       await svc.storage.from(bucketId).upload(`code/.keep`, new Blob([""], { type: 'text/plain' }), { upsert: true });
       await svc.storage.from(bucketId).upload(`assets/.keep`, new Blob([""], { type: 'text/plain' }), { upsert: true });
       await svc.storage.from(bucketId).upload(`exports/.keep`, new Blob([""], { type: 'text/plain' }), { upsert: true });
-      // Policies werden per SQL/Migration empfohlen; hier nur Hinweis:
-      // TODO: Add bucket-specific RLS policies to restrict to project owner via projects.user_uuid
     } else {
-      // Variante B: globaler Bucket 'projects' und Ordner projects/{projectId}/
       const bucketId = 'projects';
-      // Ensure bucket exists (migration also does this)
       try { await svc.storage.createBucket(bucketId, { public: false }); } catch {}
       const base = `${data.id}/`;
       await svc.storage.from(bucketId).upload(`${base}code/.keep`, new Blob([""], { type: 'text/plain' }), { upsert: true });
       await svc.storage.from(bucketId).upload(`${base}assets/.keep`, new Blob([""], { type: 'text/plain' }), { upsert: true });
       await svc.storage.from(bucketId).upload(`${base}exports/.keep`, new Blob([""], { type: 'text/plain' }), { upsert: true });
-      // Policies sind in Migration 20250909094500_storage_buckets_policies.sql hinterlegt
     }
   } catch {}
-  // Seed default files for the new project so it's immediately persisted under the user's ID
+
+  // Seed: aus Storage-Template lesen
   try {
-    const defaultFiles: Array<{ path: string; content: string }> = [
-      {
-        path: '/App.js',
-        content: `import React, { useState } from 'react';\nimport './styles.css';\n\nexport default function App() {\n  const [count, setCount] = useState(0);\n  return (\n    <div className="App">\n      <h1>React + Sandpack</h1>\n      <p>Counter: {count}</p>\n      <button onClick={() => setCount(count + 1)}>Increment</button>\n    </div>\n  );\n}`,
-      },
-      {
-        path: '/index.js',
-        content: `import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from './App';\n\nconst root = ReactDOM.createRoot(document.getElementById('root'));\nroot.render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>\n);\n`,
-      },
-      {
-        path: '/styles.css',
-        content: `.App {\n  font-family: system-ui, sans-serif;\n  text-align: center;\n  padding: 2rem;\n}\n\nbutton {\n  background: #0070f3;\n  color: white;\n  border: none;\n  padding: 0.5rem 1rem;\n  border-radius: 0.25rem;\n  font-size: 1rem;\n  cursor: pointer;\n  margin-top: 1rem;\n}\n\nbutton:hover {\n  background: #0051cc;\n}\n`,
-      },
-      {
-        path: '/public/index.html',
-        content: `<!DOCTYPE html>\n<html lang="en">\n  <head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>React App</title>\n  </head>\n  <body>\n    <div id="root"></div>\n  </body>\n</html>\n`,
-      },
-    ];
+    let defaultFiles: Array<{ path: string; content: string }> = [];
+    try {
+      defaultFiles = await loadTemplateFromStorage('templates/next16');
+    } catch {}
+
+    if (defaultFiles.length === 0) {
+      // Fallback: minimales Next-Template, Nodebox-kompatibel
+      defaultFiles = [
+        {
+          path: '/package.json',
+          content: JSON.stringify(
+            {
+              name: 'next-nodebox-app',
+              private: true,
+              version: '0.0.0',
+              scripts: { dev: 'next dev', start: 'next start' },
+              dependencies: {
+                '@next/swc-wasm-nodejs': '12.1.6',
+                next: '12.1.6',
+                react: '18.2.0',
+                'react-dom': '18.2.0',
+              },
+            },
+            null,
+            2
+          ),
+        },
+        {
+          path: '/next.config.js',
+          content: `/** @type {import('next').NextConfig} */\nconst nextConfig = {\n  reactStrictMode: true,\n};\nmodule.exports = nextConfig;\n`,
+        },
+        {
+          path: '/pages/_app.jsx',
+          content: `import '../styles/globals.css'\n\nexport default function MyApp({ Component, pageProps }) {\n  return <Component {...pageProps} />\n}\n`,
+        },
+        {
+          path: '/styles/globals.css',
+          content: `html,body{padding:0;margin:0}*{box-sizing:border-box}\n:root{--bg:#0b0b0b;--fg:#eaeaea;--muted:#9aa0a6;--primary:#7c3aed}\nbody{background:var(--bg);color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}\na{color:inherit;text-decoration:none}\n.container{max-width:960px;margin:0 auto;padding:32px}\n.btn{display:inline-flex;align-items:center;gap:8px;background:var(--primary);color:#fff;border:0;border-radius:10px;padding:10px 14px;cursor:pointer}\n.card{background:#111;border:1px solid #222;border-radius:14px;padding:20px}\n.hint{color:var(--muted);font-size:12px}\n`,
+        },
+        {
+          path: '/pages/index.jsx',
+          content: `export default function Homepage({ name }) {\n  return (\n    <main className="container">\n      <h1 style={{fontSize:32,marginBottom:8}}>Next.js + Nodebox</h1>\n      <p className="hint" style={{marginBottom:16}}>SSR-Beispiel mit getServerSideProps</p>\n      <div className="card" style={{marginTop:16}}>\n        <p>Hallo, {name}!</p>\n        <p>Diese Seite läuft komplett im Browser via Nodebox-Next.</p>\n        <a className="btn" href="/api/hello">API testen</a>\n      </div>\n    </main>\n  );\n}\n\nexport function getServerSideProps() {\n  return {\n    props: {\n      name: 'Next.js'\n    }\n  };\n}\n`,
+        },
+        {
+          path: '/pages/api/hello.js',
+          content: `export default function handler(req, res) {\n  res.status(200).json({ message: 'Hello from Next.js API route!' });\n}\n`,
+        },
+      ];
+    }
+
     const rows = defaultFiles.map((f) => ({ project_id: data.id, path: f.path, content: f.content }));
     await supabase.from('files').upsert(rows, { onConflict: 'project_id,path' });
   } catch {}

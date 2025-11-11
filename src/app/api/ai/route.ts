@@ -1,4 +1,7 @@
 import { NextRequest } from 'next/server';
+import { supabaseServer } from '@/lib/supabase/server';
+import { parseIntent } from '@/lib/intent/parser';
+import { grepProject, searchFile, readFile } from '@/lib/tools/registry';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,6 +23,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({} as any));
     const goal: string = String(body?.goal ?? '').trim();
     const system: string | undefined = typeof body?.system === 'string' ? body.system : undefined;
+    const projectId: string | undefined = typeof body?.projectId === 'string' ? body.projectId : undefined;
+    const memory: string | undefined = typeof body?.memory === 'string' ? body.memory : undefined;
     if (!goal) {
       return new Response(JSON.stringify({ error: 'goal required' }), { status: 400 });
     }
@@ -49,10 +54,95 @@ Protocol for a visible To-do plan in the chat UI:
     \`\`\`
 - Keep narrative reasoning outside of these blocks. Do not include prose in tool fences. Use concise IDs like s1, s2.
 - When all done, send: {"delta": {"phase": "complete"}} in a final block.
+Additional coding rules:
+- Write only selective edits (no full file rewrites). Use context anchors with: // ... existing code ...
+- For each changed file, emit a single fenced code block with a clear path header (e.g., path:/src/file.tsx).
 `;
 
     if (system && system.trim()) messages.push({ role: 'system', content: system.trim() });
     messages.push({ role: 'system', content: todoProtocol });
+    if (memory && memory.trim()) {
+      messages.push({ role: 'system', content: `Session memory (compressed):\n${memory.slice(-1500)}` });
+    }
+
+    // Intent parsing + Supabase-backed context (best effort)
+    let contextSummary = '';
+    try {
+      const intent = parseIntent(goal);
+      if (projectId) {
+        const supabase = await supabaseServer();
+        // RLS will gate access; proceed best-effort even if unauthenticated
+        const tasks = intent.toolPlan.map(async (t) => {
+          if (t.name === 'searchFile') {
+            const query = String(t.params?.query || goal).slice(0, 120);
+            const hits = await searchFile(supabase as any, projectId, query, 80);
+            return { type: 'searchFile' as const, hits };
+          }
+          if (t.name === 'grepProject') {
+            const pre = String(t.params?.pattern || goal).slice(0, 120);
+            const hits = await grepProject(supabase as any, projectId, pre, { prefilterQuery: pre, limitFiles: 80, limitHitsPerFile: 2 });
+            return { type: 'grepProject' as const, hits };
+          }
+          return null;
+        });
+        const results = (await Promise.allSettled(tasks)).flatMap((r) =>
+          r.status === 'fulfilled' && r.value ? [r.value] : []
+        );
+        const lines: string[] = [];
+        const candidatePaths = new Set<string>();
+        for (const r of results) {
+          if (r.type === 'searchFile') {
+            const sample = r.hits.slice(0, 12);
+            if (sample.length) {
+              lines.push(`SearchFile (top ${sample.length}):`);
+              for (const h of sample) {
+                lines.push(`- ${h.path}${h.excerpt ? ` — ${h.excerpt}` : ''}`);
+                candidatePaths.add(h.path);
+              }
+            }
+          } else if (r.type === 'grepProject') {
+            const sample = r.hits.slice(0, 12);
+            if (sample.length) {
+              lines.push(`GrepProject (top ${sample.length}):`);
+              for (const h of sample) {
+                const snippet = [h.before, h.match, h.after].filter(Boolean).join(' ⏐ ');
+                lines.push(`- ${h.path}:${h.line} — ${snippet}`);
+                candidatePaths.add(h.path);
+              }
+            }
+          }
+        }
+        contextSummary = lines.join('\n').slice(0, 4000);
+
+        // Prefer full Markdown docs for context if available
+        const mdCandidates = Array.from(candidatePaths).filter((p) => /\.mdx?$/.test(p));
+        if (mdCandidates.length) {
+          const pick = mdCandidates.slice(0, 3);
+          const docs = await Promise.all(
+            pick.map(async (p) => (await readFile(supabase as any, projectId, p)) || null)
+          );
+          const parts: string[] = [];
+          let budget = 4000; // limit added doc text
+          for (const doc of docs.filter(Boolean) as Array<{ path: string; content: string }>) {
+            let chunk = String(doc.content || '').trim();
+            if (!chunk) continue;
+            if (chunk.length > budget) chunk = chunk.slice(0, budget);
+            parts.push(`${doc.path}\n\`\`\`markdown\n${chunk}\n\`\`\``);
+            budget -= chunk.length;
+            if (budget <= 512) break;
+          }
+          if (parts.length) {
+            messages.push({ role: 'system', content: `Documentation excerpts:\n\n${parts.join('\n\n')}` });
+          }
+        }
+      }
+    } catch {
+      // ignore context errors
+    }
+
+    if (contextSummary) {
+      messages.push({ role: 'system', content: `Repository context (read-only):\n${contextSummary}` });
+    }
     messages.push({ role: 'user', content: goal });
 
     // Prefer user-provided model, then qwen/qwen3-coder-flash, then safe fallbacks

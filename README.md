@@ -31,3 +31,17 @@ Protocol the model follows:
 	```
 
 The client strips these blocks from the visible assistant text and updates the plan UI in place.
+
+## OpenRouter Streaming (SSE)
+
+Die Route `/api/ai` streamt Antworten über OpenRouter (SSE).
+
+- Erforderlich in `.env`:
+  - `OPENROUTER_API_KEY=<your-key>`
+  - optional `OPENROUTER_MODEL_ID=qwen/qwen3-coder-flash`
+- Optional: `APP_URL` für Header `HTTP-Referer`
+
+Hinweise:
+- Kommentare im SSE-Stream werden ignoriert, Tokens kommen als `{ type: "token", text }`.
+- Mid-Stream-Fehler werden als `{ type: "error", ... }` weitergereicht.
+- Abschluss erfolgt mit `{ type: "done" }`.

@@ -193,7 +193,7 @@ export function AI_Prompt({ onSubmit, disabled }: AIPromptProps) {
     };
 
     return (
-        <div className="w-full py-4">
+        <div className="w-full pt-2 pb-0">
             <div className="bg-black/5 dark:bg-white/5 rounded-2xl p-1.5">
                 <div className="relative">
                     <div className="relative flex flex-col">

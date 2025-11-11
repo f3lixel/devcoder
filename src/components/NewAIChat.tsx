@@ -690,10 +690,15 @@ export function NewAIChat({
         </div>
       )}
 
-      <div className="border-t px-0 py-4">
+      <div className="border-t px-0 pt-4 pb-0">
         <div className="mb-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <StatusBadge status={status === "error" ? "error" : status === "streaming" ? "running" : "idle"} label={status === "error" ? "AI Fehler" : status === "streaming" ? "AI denkt…" : "AI bereit"} />
+            {status !== "idle" && (
+              <StatusBadge
+                status={status === "error" ? "error" : "running"}
+                label={status === "error" ? "AI Fehler" : "AI denkt…"}
+              />
+            )}
           </div>
         </div>
         <AI_Prompt onSubmit={handleSubmit} disabled={status === "streaming"} />
