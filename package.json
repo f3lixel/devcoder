@@ -9,7 +9,7 @@
     "lint": "eslint",
     "embed-template": "node scripts/embed-template.js",
     "seed:template": "npx tsx scripts/seed-template.ts",
-    "seed:next16": "npx tsx scripts/seed-next16-template.ts", 
+    "seed:next16": "npx tsx scripts/seed-next16-template.ts",
     "test": "vitest run"
   },
   "dependencies": {
@@ -17,13 +17,12 @@
     "@assistant-ui/react": "^0.11.21",
     "@assistant-ui/react-ai-sdk": "^1.1.3",
     "@assistant-ui/react-markdown": "^0.11.0",
-    "@codesandbox/sandpack-react": "^2.20.0",
     "@codesandbox/nodebox": "^0.1.9",
+    "@codesandbox/sandpack-react": "^2.20.0",
     "@headlessui/react": "^2.2.7",
     "@iconify-json/vscode-icons": "^1.2.31",
     "@iconify/react": "^6.0.2",
     "@icons-pack/react-simple-icons": "^13.7.0",
-    "@mastra/core": "^0.1.3",
     "@monaco-editor/react": "^4.7.0",
     "@openrouter/ai-sdk-provider": "^1.2.0",
     "@radix-ui/react-accordion": "^1.2.12",

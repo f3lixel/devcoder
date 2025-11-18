@@ -140,38 +140,138 @@ function HomeContent() {
   }, [projectId, files, didInitialSync]);
 
   const handleNewFiles = useCallback((newFiles: Array<{ path: string; content: string }>) => {
+    // Helper: make a filename-safe PascalCase identifier
+    const toPascalCase = (raw: string): string => {
+      const cleaned = raw
+        .replace(/[^A-Za-z0-9]+/g, ' ')
+        .trim()
+        .split(/\s+/)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join('');
+      return cleaned || 'Generated';
+    };
+
+    // Helper: try to infer a component/name from the file content
+    const inferNameFromCode = (code: string): string | null => {
+      const patterns = [
+        /\bexport\s+default\s+function\s+([A-Z][A-Za-z0-9_]*)/,
+        /\bfunction\s+([A-Z][A-Za-z0-9_]*)\s*\(/,
+        /\bconst\s+([A-Z][A-Za-z0-9_]*)\s*[:=]\s*(?:React\.FC|React\.FunctionComponent|\(.*=>)/,
+        /\bclass\s+([A-Z][A-Za-z0-9_]*)\s+/,
+      ];
+      for (const re of patterns) {
+        const m = code.match(re);
+        if (m?.[1]) return m[1];
+      }
+      // Try simple "// Sidebar" style comments
+      const commentMatch = code.match(/\/\/\s*([A-Za-z][A-Za-z0-9_-]+)\s*(?:component)?/i);
+      if (commentMatch?.[1]) return toPascalCase(commentMatch[1]);
+      return null;
+    };
+
+    // Helper: normalize AI temp paths to meaningful project paths
+    const normalizeGeneratedPath = (
+      rawPath: string,
+      content: string,
+      existing: Record<string, any>,
+      tempIndex: number,
+    ): string => {
+      const withSlash = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+
+      // If it's not one of our temp-ai-code-* files, keep as-is
+      if (!/^\/?temp-ai-code-\d+\./i.test(withSlash)) {
+        return withSlash;
+      }
+
+      const ext = (withSlash.split('.').pop() || 'js').toLowerCase();
+      const inferred = inferNameFromCode(content) || (ext === 'css' ? 'Styles' : 'Component');
+      const baseName = toPascalCase(inferred);
+
+      // 1. Try to find an existing file with this name to overwrite/update
+      const existingPaths = Object.keys(existing);
+      
+      // Special handling for App component - prefer root or existing location
+      if (baseName === 'App') {
+        const appMatch = existingPaths.find(p => p.match(/^\/?(src\/)?App\.(js|jsx|ts|tsx)$/i));
+        if (appMatch) return appMatch;
+        // If no App exists yet, default to /App.tsx (root)
+        return '/App.tsx';
+      }
+
+      // General search for existing component with same name
+      // We prioritize exact matches in src/components or root
+      const match = existingPaths.find(p => {
+        const parts = p.split('/');
+        const pFilename = parts[parts.length - 1];
+        const pName = pFilename.split('.')[0];
+        return pName?.toLowerCase() === baseName.toLowerCase() && /\.(js|jsx|ts|tsx)$/i.test(p);
+      });
+      
+      if (match) {
+        return match;
+      }
+
+      // 2. If not found, generate new path
+      let baseDir = '/src';
+      let fileName = `${baseName}.${ext}`;
+
+      if (['js', 'jsx', 'ts', 'tsx'].includes(ext)) {
+        baseDir = '/src/components';
+        const finalExt = ext === 'jsx' ? 'tsx' : ext;
+        fileName = `${baseName}.${finalExt}`;
+      } else if (ext === 'css') {
+        baseDir = '/styles';
+        fileName = `${baseName.toLowerCase()}.css`;
+      } else if (ext === 'html' || ext === 'htm') {
+        baseDir = '/public';
+        // Prefer index.html if noch nicht vorhanden
+        const indexPath = '/public/index.html';
+        if (!existing[indexPath]) return indexPath;
+        fileName = `page-${tempIndex}.html`;
+      }
+
+      return `${baseDir}/${fileName}`;
+    };
+
     let firstPath: string | undefined;
     let firstContent: string | undefined;
-    setFiles(prevFiles => {
-  const safePrev = prevFiles || {};
-  // Use a plain record here to avoid narrowing/undefined issues from the Sandpack types
-  const next: Record<string, any> = { ...safePrev };
-      newFiles.forEach(file => {
-        const normalizedPath = file.path.startsWith('/') ? file.path : `/${file.path}`;
+    const normalizedForServer: Array<{ path: string; content: string }> = [];
+
+    setFiles((prevFiles) => {
+      const safePrev = prevFiles || {};
+      // Use a plain record here to avoid narrowing/undefined issues from the Sandpack types
+      const next: Record<string, any> = { ...safePrev };
+
+      newFiles.forEach((file, index) => {
+        const normalizedPath = normalizeGeneratedPath(file.path, file.content, next, index + 1);
         if (!firstPath) {
           firstPath = normalizedPath;
           firstContent = file.content;
         }
         // Always write the file content as a plain string (Sandpack accepts string or file objects)
         next[normalizedPath] = file.content;
+        normalizedForServer.push({ path: normalizedPath, content: file.content });
       });
+
       return next as SandpackProviderProps['files'];
     });
-    // Focus the first created/modified file in the editor using the incoming content (avoids race)
+
+    // Focus the first created/modified file in the editor using the normalized path (avoids race)
     if (firstPath && typeof firstContent === 'string') {
       setCurrentFile({ path: firstPath, content: firstContent });
     }
+
     // Persist files to server (Supabase) so the agent has an up-to-date project view
-    if (projectId && newFiles.length > 0) {
+    if (projectId && normalizedForServer.length > 0) {
       try {
         fetch(`/api/projects/${projectId}/files`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ files: newFiles }),
+          body: JSON.stringify({ files: normalizedForServer }),
         }).catch(() => {});
       } catch {}
     }
-  }, [setFiles]);
+  }, [setFiles, setCurrentFile, projectId]);
 
   const handleFileChange = useCallback((path: string, code: string) => {
     setFiles(prevFiles => ({
