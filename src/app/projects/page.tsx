@@ -13,66 +13,67 @@ import { NewAIChat } from "@/components/NewAIChat";
 const DEFAULT_STORAGE_KEY = 'sandbox:react:session:v1';
 
 const defaultFiles: SandpackProviderProps['files'] = {
-  '/App.js': `import React, { useState } from 'react';
-import './styles.css';
+  '/package.json': `{
+  "name": "felixel-next-app",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "12.1.6",
+    "@next/swc-wasm-nodejs": "12.1.6",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  }
+}
+`,
+  '/next.config.js': `/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+};
 
-export default function App() {
-  const [count, setCount] = useState(0);
-  
+module.exports = nextConfig;
+`,
+  '/pages/_app.js': `import '../styles/globals.css';
+
+export default function MyApp({ Component, pageProps }) {
+  return <Component {...pageProps} />;
+}
+`,
+  '/pages/index.js': `export default function Home() {
   return (
-    <div className="App">
-      <h1>React + Sandpack</h1>
-      <p>Counter: {count}</p>
-      <button onClick={() => setCount(count + 1)}>
-        Increment
-      </button>
-    </div>
+    <main style={{ fontFamily: 'system-ui, sans-serif', padding: '2rem' }}>
+      <h1>Next.js + NodeBox</h1>
+      <p>Bearbeite Dateien im Dateibaum links und sieh die Live-Preview rechts.</p>
+      <ul style={{ lineHeight: 1.8 }}>
+        <li>📁 Alle Dateien werden im Sandpack-Editor gespeichert</li>
+        <li>⚡ NodeBox startet automatisch \`npm run dev\`</li>
+        <li>👀 Die Vorschau lädt unter der gewohnten Next.js-URL</li>
+      </ul>
+    </main>
   );
 }
 `,
-  '/index.js': `import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
-
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
-`,
-  '/styles.css': `.App {
-  font-family: system-ui, sans-serif;
-  text-align: center;
-  padding: 2rem;
+  '/styles/globals.css': `* {
+  box-sizing: border-box;
 }
 
-button {
-  background: #0070f3;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 0.25rem;
-  font-size: 1rem;
-  cursor: pointer;
-  margin-top: 1rem;
+html,
+body {
+  padding: 0;
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #020202;
+  color: #f5f5f5;
 }
 
-button:hover {
-  background: #0051cc;
+a {
+  color: inherit;
+  text-decoration: none;
 }
-`,
-  '/public/index.html': `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>React App</title>
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
-</html>
 `,
 };
 

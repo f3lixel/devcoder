@@ -67,6 +67,41 @@ function Toolbar({ onOpenNewTab }: { onOpenNewTab: () => void }) {
   );
 }
 
+function SandpackBridge({
+  onFilesChange,
+  onFileSelect,
+}: {
+  onFilesChange: (path: string, code: string) => void;
+  onFileSelect?: (path: string) => void;
+}) {
+  const { sandpack } = useSandpack();
+
+  useEffect(() => {
+    const listen = (sandpack as any)?.listen;
+    if (typeof listen !== 'function') {
+      return;
+    }
+    const unsubscribe = listen((message: any) => {
+      if (message.type === 'update' && typeof message.code === 'string' && typeof message.path === 'string') {
+        const normalized = message.path.startsWith('/') ? message.path : `/${message.path}`;
+        onFilesChange(normalized, message.code);
+      }
+    });
+    return () => {
+      unsubscribe?.();
+    };
+  }, [sandpack, onFilesChange]);
+
+  useEffect(() => {
+    if (sandpack?.activeFile && onFileSelect) {
+      const normalized = sandpack.activeFile.startsWith('/') ? sandpack.activeFile : `/${sandpack.activeFile}`;
+      onFileSelect(normalized);
+    }
+  }, [sandpack?.activeFile, onFileSelect]);
+
+  return null;
+}
+
 export default function SandboxPlayground({ 
   files, 
   onFilesChange, 
@@ -825,14 +860,16 @@ export default function SandboxPlayground({
   }, [nodeboxStatus, previewReady]);
 
   const handleCodeUpdate = useCallback((path: string, code: string) => {
-    const nextPath = path === '/package.js' ? '/package.json' : path;
+    const normalized = path.startsWith('/') ? path : `/${path}`;
+    const nextPath = normalized === '/package.js' ? '/package.json' : normalized;
     onFilesChange(nextPath, code);
   }, [onFilesChange]);
 
   // Notify parent when a file is selected in the editor
   const handleFileOpen = useCallback((path: string) => {
     if (onFileSelect) {
-      onFileSelect(path);
+      const normalized = path.startsWith('/') ? path : `/${path}`;
+      onFileSelect(normalized);
     }
   }, [onFileSelect]);
 
@@ -849,6 +886,7 @@ export default function SandboxPlayground({
           autorun: true,
         }}
       >
+        <SandpackBridge onFilesChange={handleCodeUpdate} onFileSelect={handleFileOpen} />
         {/* Custom header matching the screenshot with eye/code tab switch */}
         <SandboxTabs defaultValue="code" className="h-full p-0 rounded-2xl border border-[#1a1a1a] bg-[oklch(0.172 0 82.16)] text-neutral-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)]">
           {/* Top bar */}
