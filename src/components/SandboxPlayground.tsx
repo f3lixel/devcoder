@@ -10,7 +10,6 @@ import {
   SandboxCodeEditor,
   SandboxEditorTabs,
   SandboxEditorBreadcrumbs,
-  SandboxPreview,
 } from '@/components/ui/shadcn-io/sandbox/index';
 import type { SandpackProviderProps } from '@codesandbox/sandpack-react';
 import { Nodebox } from '@codesandbox/nodebox';
@@ -127,9 +126,8 @@ export default function SandboxPlayground({
       return next.length > 200 ? next.slice(next.length - 200) : next;
     });
     const label = type === 'stderr' ? '[Nodebox stderr]' : '[Nodebox stdout]';
-    // Zusätzlich im Browser-Console-Log ausgeben, aber ohne Next.js-Error-Overlay zu triggern
-    const method: 'log' | 'warn' = type === 'stderr' ? 'warn' : 'log';
-    console[method](`${label} ${cleaned}`);
+    // Zusätzlich im Browser-Console-Log ausgeben
+    console[type === 'stderr' ? 'error' : 'log'](`${label} ${cleaned}`);
   }, [textDecoder]);
 
   // Editor-Theme: VSCode/One Dark Pro nah – dunkle Flächen, grüne Strings, lila Keywords
@@ -425,43 +423,6 @@ export default function SandboxPlayground({
         }
       }
 
-      // Fallback: Wenn nach allen Heuristiken noch immer kein Startskript existiert,
-      // erzeugen wir einen minimalen Node-HTTP-Server und passende dev/start-Skripte.
-      const hasAnyScript =
-        typeof pkg.scripts.dev === 'string' ||
-        typeof pkg.scripts.start === 'string' ||
-        typeof pkg.scripts.preview === 'string';
-
-      if (!hasAnyScript) {
-        const defaultEntry = serverEntry || 'server.mjs';
-        if (!files[defaultEntry]) {
-          files[defaultEntry] = [
-            "import http from 'http';",
-            '',
-            "const port = Number(process.env.PORT) || 3000;",
-            '',
-            "const server = http.createServer((req, res) => {",
-            "  res.setHeader('Content-Type', 'text/html; charset=utf-8');",
-            '  res.writeHead(200);',
-            "  res.end('<!doctype html><html><head><title>Nodebox Sandbox</title></head><body><h1>Nodebox Sandbox Ready</h1><p>Dieses Fallback-Setup wurde automatisch erzeugt, weil kein Startskript in package.json gefunden wurde.</p></body></html>');",
-            '});',
-            '',
-            'server.listen(port, () => {',
-            "  // eslint-disable-next-line no-console",
-            "  console.log(`Server listening on http://localhost:${port}`);",
-            '});',
-            '',
-          ].join('\\n');
-        }
-
-        if (!pkg.scripts.start) {
-          pkg.scripts.start = `node ${defaultEntry}`;
-        }
-        if (!pkg.scripts.dev) {
-          pkg.scripts.dev = pkg.scripts.start;
-        }
-      }
-
       files['package.json'] = JSON.stringify(pkg, null, 2);
     } catch {
       // If parsing fails, keep original raw package.json (already ensured above)
@@ -481,42 +442,6 @@ export default function SandboxPlayground({
       return null;
     }
   }, [effectiveFiles]);
-
-  const shouldUseNodebox = useMemo(() => {
-    const raw = nodeboxFiles['package.json'];
-    try {
-      if (raw) {
-        const pkg = JSON.parse(raw);
-        const deps = pkg.dependencies ?? {};
-        const scripts = pkg.scripts ?? {};
-
-        const hasNext = Boolean(deps.next) || Object.keys(nodeboxFiles).some((p) => p.startsWith('pages/') || p.startsWith('app/'));
-        const hasServerLikeEntry = [
-          'server.mjs',
-          'server.cjs',
-          'server.js',
-          'server.ts',
-          'src/server.ts',
-          'src/server.js',
-          'api/index.ts',
-          'api/index.js',
-          'functions/server.ts',
-          'functions/server.js',
-        ].some((p) => Boolean(nodeboxFiles[p]));
-
-        const scriptValues: string[] = Object.values(scripts ?? {}).filter((v: unknown): v is string => typeof v === 'string');
-        const scriptHints = scriptValues.some((cmd) =>
-          ['next', 'node ', 'vite ', 'nuxt', 'remix', 'astro'].some((keyword) => cmd.includes(keyword))
-        );
-
-        return hasNext || hasServerLikeEntry || scriptHints;
-      }
-    } catch {
-      // Fallback: wenn package.json nicht geparst werden kann, Nodebox lieber deaktivieren
-      return false;
-    }
-    return false;
-  }, [nodeboxFiles]);
 
   type NodeCommandConfig = {
     binary: string;
@@ -580,15 +505,6 @@ export default function SandboxPlayground({
   }, [nodeboxFiles, packageJson]);
 
   useEffect(() => {
-    if (!shouldUseNodebox) {
-      // Wenn Nodebox deaktiviert ist, verwenden wir nur die Sandpack-Vorschau.
-      setNodeboxReady(false);
-      setNodeboxStatus('idle');
-      setNodeboxError(null);
-      setPreviewReady(true);
-      return;
-    }
-
     if (!runtimeIframeRef.current) {
       return;
     }
@@ -640,12 +556,9 @@ export default function SandboxPlayground({
       activeProcessRef.current = null;
       nodeboxRef.current = null;
     };
-  }, [shouldUseNodebox]);
+  }, []);
 
   const syncNodeboxFs = useCallback(async () => {
-    if (!shouldUseNodebox) {
-      return;
-    }
     const runtime = nodeboxRef.current;
     if (!runtime) {
       return;
@@ -693,12 +606,9 @@ export default function SandboxPlayground({
     }
 
     lastSyncedFilesRef.current = { ...files };
-  }, [nodeboxFiles, shouldUseNodebox]);
+  }, [nodeboxFiles]);
 
   const startNodeboxProcess = useCallback(async () => {
-    if (!shouldUseNodebox) {
-      return;
-    }
     const runtime = nodeboxRef.current;
     if (!runtime || !nodeCommand) {
       return;
@@ -797,7 +707,7 @@ export default function SandboxPlayground({
       setNodeboxStatus('error');
       setPreviewReady(false);
     }
-  }, [appendLog, nodeCommand, shouldUseNodebox]);
+  }, [appendLog, nodeCommand]);
 
   useEffect(() => {
     restartOnFsChangeRef.current = nodeCommand?.restartOnFsChange ?? false;
@@ -817,10 +727,6 @@ export default function SandboxPlayground({
   }, [nodeCommand]);
 
   useEffect(() => {
-    if (!shouldUseNodebox) {
-      return;
-    }
-
     if (!nodeboxReady) {
       return;
     }
@@ -871,10 +777,10 @@ export default function SandboxPlayground({
     return () => {
       cancelled = true;
     };
-  }, [appendLog, nodeCommand, nodeboxReady, shouldUseNodebox, startNodeboxProcess, syncNodeboxFs]);
+  }, [appendLog, nodeCommand, nodeboxReady, startNodeboxProcess, syncNodeboxFs]);
 
   const handleRestart = useCallback(async () => {
-    if (!shouldUseNodebox || !nodeboxReady || !nodeCommand) {
+    if (!nodeboxReady || !nodeCommand) {
       return;
     }
     try {
@@ -890,7 +796,7 @@ export default function SandboxPlayground({
       setNodeboxStatus('error');
       setPreviewReady(false);
     }
-  }, [appendLog, nodeCommand, nodeboxReady, shouldUseNodebox, startNodeboxProcess, syncNodeboxFs]);
+  }, [appendLog, nodeCommand, nodeboxReady, startNodeboxProcess, syncNodeboxFs]);
 
   const toggleLogs = useCallback(() => {
     setShowLogs((previous) => !previous);
@@ -1002,135 +908,126 @@ export default function SandboxPlayground({
           <SandboxLayout>
             <SandboxTabsContent value="preview" className="relative h-full">
               <div className="relative h-full w-full overflow-hidden rounded-b-2xl bg-[#0d0d0d]">
-                {shouldUseNodebox ? (
-                  <>
-                    <iframe
-                      id="nodebox-preview-iframe"
-                      ref={nodeboxPreviewRef}
-                      title="Nodebox Preview"
-                      className="h-full w-full border-0 bg-[#0d0d0d] text-left"
-                      allow="accelerometer; ambient-light-sensor; autoplay; camera; encrypted-media; fullscreen; geolocation; gyroscope; magnetometer; microphone; midi; payment; usb; xr-spatial-tracking"
-                      sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-popups allow-modals"
-                    />
-                    <iframe
-                      id="nodebox-runtime-iframe"
-                      ref={runtimeIframeRef}
-                      title="Nodebox Runtime"
-                      className="hidden"
-                      src="about:blank"
-                      aria-hidden="true"
-                    />
-                    {(!previewReady || nodeboxStatus === 'connecting' || nodeboxStatus === 'syncing' || nodeboxStatus === 'starting') && (
-                      <div className="absolute inset-0 z-20 grid place-items-center bg-black/60 backdrop-blur-sm transition-opacity">
-                        <div className="flex items-center gap-2 rounded-md border border-white/10 bg-black/70 px-3 py-2 text-neutral-200 shadow-inner">
-                          <Loader size={16} className="animate-spin" />
-                          <span className="text-sm font-medium">{statusLabel}</span>
-                        </div>
-                      </div>
-                    )}
-                    {nodeboxError && (
-                      <div className="absolute inset-6 z-30 rounded-xl border border-red-500/50 bg-red-500/15 p-4 backdrop-blur">
-                        <div className="flex items-start gap-3 text-sm text-red-100">
-                          <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" />
-                          <div className="space-y-3">
-                            <div>
-                              <p className="font-medium tracking-wide text-red-100">Nodebox-Fehler</p>
-                              <p className="mt-1 whitespace-pre-wrap break-words text-red-100/80">{nodeboxError}</p>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                className="inline-flex items-center gap-1 rounded-md border border-red-300/40 bg-red-400/10 px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-red-100 transition hover:bg-red-400/20"
-                                onClick={handleRestart}
-                              >
-                                <RotateCcw size={14} />
-                                Erneut versuchen
-                              </button>
-                              {currentPreviewUrl && (
-                                <button
-                                  type="button"
-                                  className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-white transition hover:bg-white/10"
-                                  onClick={() => {
-                                    try {
-                                      window.open(currentPreviewUrl, '_blank', 'noopener,noreferrer');
-                                    } catch (error) {
-                                      console.error('Konnte Vorschau nicht öffnen', error);
-                                    }
-                                  }}
-                                >
-                                  <ExternalLink size={14} />
-                                  Im Tab öffnen
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    <div className="pointer-events-none absolute top-3 right-3 z-40 flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleRestart}
-                        title="Nodebox neu starten"
-                        className="pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-black/60 text-neutral-200 transition hover:border-white/30 hover:text-white"
-                      >
-                        <RotateCcw size={15} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={toggleLogs}
-                        title={showLogs ? 'Logs ausblenden' : hasLogs ? 'Logs anzeigen' : 'Noch keine Logs'}
-                        className="pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-black/60 text-neutral-200 transition hover:border-white/30 hover:text-white disabled:opacity-50"
-                        disabled={!hasLogs && !showLogs}
-                      >
-                        <Terminal size={15} />
-                      </button>
+                <iframe
+                  id="nodebox-preview-iframe"
+                  ref={nodeboxPreviewRef}
+                  title="Nodebox Preview"
+                  className="h-full w-full border-0 bg-[#0d0d0d] text-left"
+                  allow="accelerometer; ambient-light-sensor; autoplay; camera; encrypted-media; fullscreen; geolocation; gyroscope; magnetometer; microphone; midi; payment; usb; xr-spatial-tracking"
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-popups allow-modals"
+                />
+                <iframe
+                  id="nodebox-runtime-iframe"
+                  ref={runtimeIframeRef}
+                  title="Nodebox Runtime"
+                  className="hidden"
+                  src="about:blank"
+                  aria-hidden="true"
+                />
+                {(!previewReady || nodeboxStatus === 'connecting' || nodeboxStatus === 'syncing' || nodeboxStatus === 'starting') && (
+                  <div className="absolute inset-0 z-20 grid place-items-center bg-black/60 backdrop-blur-sm transition-opacity">
+                    <div className="flex items-center gap-2 rounded-md border border-white/10 bg-black/70 px-3 py-2 text-neutral-200 shadow-inner">
+                      <Loader size={16} className="animate-spin" />
+                      <span className="text-sm font-medium">{statusLabel}</span>
                     </div>
-                    {showLogs && (
-                      <div className="pointer-events-auto absolute bottom-3 right-3 z-40 w-[min(460px,calc(100%-24px))] max-h-[45%] overflow-hidden rounded-xl border border-white/10 bg-black/85 shadow-lg backdrop-blur">
-                        <div className="flex items-center justify-between border-b border-white/5 px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-neutral-300">
-                          <span>Nodebox Logs</span>
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={clearLogs}
-                              className="rounded-md bg-white/5 px-2 py-1 text-[10px] font-semibold tracking-wide text-neutral-200 transition hover:bg-white/10"
-                            >
-                              Clear
-                            </button>
-                            <button
-                              type="button"
-                              onClick={toggleLogs}
-                              className="rounded-md bg-white/5 p-1 text-neutral-200 transition hover:bg-white/10"
-                              aria-label="Logs schließen"
-                            >
-                              <ChevronRight size={12} className="transform rotate-90" />
-                            </button>
-                          </div>
+                  </div>
+                )}
+                {nodeboxError && (
+                  <div className="absolute inset-6 z-30 rounded-xl border border-red-500/50 bg-red-500/15 p-4 backdrop-blur">
+                    <div className="flex items-start gap-3 text-sm text-red-100">
+                      <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" />
+                      <div className="space-y-3">
+                        <div>
+                          <p className="font-medium tracking-wide text-red-100">Nodebox-Fehler</p>
+                          <p className="mt-1 whitespace-pre-wrap break-words text-red-100/80">{nodeboxError}</p>
                         </div>
-                        <div className="max-h-[calc(100%-40px)] space-y-1 overflow-y-auto bg-black/60 px-3 py-2 font-mono text-[11px] leading-5 text-neutral-100">
-                          {hasLogs ? (
-                            logBuffer.slice(-120).map((entry, index) => (
-                              <div
-                                key={`${entry.type}-${index}-${entry.message.length}`}
-                                className={entry.type === 'stderr' ? 'text-red-300' : 'text-emerald-300'}
-                              >
-                                {entry.message.trim() || ' '}
-                              </div>
-                            ))
-                          ) : (
-                            <div className="text-neutral-500">Noch keine Ausgaben.</div>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 rounded-md border border-red-300/40 bg-red-400/10 px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-red-100 transition hover:bg-red-400/20"
+                            onClick={handleRestart}
+                          >
+                            <RotateCcw size={14} />
+                            Erneut versuchen
+                          </button>
+                          {currentPreviewUrl && (
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-white transition hover:bg-white/10"
+                              onClick={() => {
+                                try {
+                                  window.open(currentPreviewUrl, '_blank', 'noopener,noreferrer');
+                                } catch (error) {
+                                  console.error('Konnte Vorschau nicht öffnen', error);
+                                }
+                              }}
+                            >
+                              <ExternalLink size={14} />
+                              Im Tab öffnen
+                            </button>
                           )}
                         </div>
                       </div>
-                    )}
-                  </>
-                ) : (
-                  <SandboxPreview
-                    className="h-full w-full border-0 bg-[#0d0d0d] text-left"
-                    showOpenInCodeSandbox={false}
-                  />
+                    </div>
+                  </div>
                 )}
+                <div className="pointer-events-none absolute top-3 right-3 z-40 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleRestart}
+                    title="Nodebox neu starten"
+                    className="pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-black/60 text-neutral-200 transition hover:border-white/30 hover:text-white"
+                  >
+                    <RotateCcw size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleLogs}
+                    title={showLogs ? 'Logs ausblenden' : hasLogs ? 'Logs anzeigen' : 'Noch keine Logs'}
+                    className="pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-black/60 text-neutral-200 transition hover:border-white/30 hover:text-white disabled:opacity-50"
+                    disabled={!hasLogs && !showLogs}
+                  >
+                    <Terminal size={15} />
+                  </button>
+                </div>
+                {showLogs && (
+                  <div className="pointer-events-auto absolute bottom-3 right-3 z-40 w-[min(460px,calc(100%-24px))] max-h-[45%] overflow-hidden rounded-xl border border-white/10 bg-black/85 shadow-lg backdrop-blur">
+                    <div className="flex items-center justify-between border-b border-white/5 px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-neutral-300">
+                      <span>Nodebox Logs</span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={clearLogs}
+                          className="rounded-md bg-white/5 px-2 py-1 text-[10px] font-semibold tracking-wide text-neutral-200 transition hover:bg-white/10"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          type="button"
+                          onClick={toggleLogs}
+                          className="rounded-md bg-white/5 p-1 text-neutral-200 transition hover:bg-white/10"
+                          aria-label="Logs schließen"
+                        >
+                          <ChevronRight size={12} className="transform rotate-90" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="max-h-[calc(100%-40px)] space-y-1 overflow-y-auto bg-black/60 px-3 py-2 font-mono text-[11px] leading-5 text-neutral-100">
+                      {hasLogs ? (
+                        logBuffer.slice(-120).map((entry, index) => (
+                          <div
+                            key={`${entry.type}-${index}-${entry.message.length}`}
+                            className={entry.type === 'stderr' ? 'text-red-300' : 'text-emerald-300'}
+                          >
+                            {entry.message.trim() || ' '}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-neutral-500">Noch keine Ausgaben.</div>
+                      )}
+                  </div>
+                </div>
+              )}
               </div>
             </SandboxTabsContent>
             <SandboxTabsContent value="code" className="h-full w-full p-0 m-0">
