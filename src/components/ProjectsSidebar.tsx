@@ -98,7 +98,7 @@ export default function ProjectsSidebar() {
     <Sidebar>
       <SidebarBody
         className={cn(
-          "relative !pt-16 bg-[oklch(0.172 0 82.16)] backdrop-blur-0 border-r border-white/10 rounded-none",
+          "relative !pt-16 bg-[#272525] backdrop-blur-0 border-r border-white/10 rounded-none",
           "text-neutral-200"
         )}
       >
@@ -177,8 +177,8 @@ function BrandLogo() {
       <Image
         src="/user-logo.svg"
         alt="User Logo"
-        width={40}
-        height={32}
+        width={34}
+        height={41}
         priority
       />
     </div>
@@ -226,7 +226,7 @@ function RecentChatsPanel({ recentChats }: { recentChats: string[] }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="mt-2 h-[220px] w-full bg-[oklch(0.172 0 82.16)] relative flex items-center justify-center"
+            className="mt-2 h-[220px] w-full bg-[#272525] relative flex items-center justify-center"
           >
             <motion.span
               layoutId="recentChatsTitle"

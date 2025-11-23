@@ -1,12 +1,13 @@
 'use client';
 
 import ResizableSplit from "@/components/ResizableSplit";
-import ProjectsSidebar from "@/components/ProjectsSidebar";
+import SidebarComponent from "@/components/ui/sidebar-component";
 import dynamic from "next/dynamic";
 import { useViewMode } from "@/components/view-mode-context";
 import { Suspense, useState, useMemo, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import type { SandpackProviderProps } from "@codesandbox/sandpack-react";
+import { PanelLeft } from "lucide-react";
 const SandboxPlayground = dynamic(() => import("@/components/SandboxPlayground"), { ssr: false });
 import { NewAIChat } from "@/components/NewAIChat";
 
@@ -78,12 +79,33 @@ a {
 };
 
 export default function Home() {
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
   return (
-    <div className="h-[100vh] w-full overflow-hidden flex" style={{backgroundColor: "oklch(0.172 0 82.16)"}}>
-      <div className="shrink-0">
-        <ProjectsSidebar />
-      </div>
-      <div className="flex-1 min-w-0">
+    <div
+      className="h-[100vh] w-full overflow-hidden flex"
+      style={{ backgroundColor: "#1c1c1c" }}
+    >
+      {sidebarOpen && (
+        <div id="projects-sidebar" className="shrink-0">
+          <SidebarComponent />
+        </div>
+      )}
+
+      <div className="flex-1 min-w-0 relative">
+        {/* Sidebar-Toggle direkt neben der Sidebar im Hauptbereich */}
+        <button
+          type="button"
+          aria-label={sidebarOpen ? "Sidebar schließen" : "Sidebar öffnen"}
+          aria-controls="projects-sidebar"
+          aria-expanded={sidebarOpen}
+          title={sidebarOpen ? "Sidebar schließen" : "Sidebar öffnen"}
+          onClick={() => setSidebarOpen((s) => !s)}
+          className="absolute left-4 top-4 z-20 rounded-lg border border-white/10 bg-white/10 p-2 text-white hover:bg-white/15"
+        >
+          <PanelLeft className="h-5 w-5" />
+        </button>
+
         <Suspense fallback={<div>Loading project...</div>}>
           <HomeContent />
         </Suspense>

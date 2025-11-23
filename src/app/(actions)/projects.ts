@@ -6,7 +6,7 @@ import { supabaseService } from "@/lib/supabase/service";
 
 type SeedFile = { path: string; content: string };
 
-async function loadTemplateFromStorage(prefix: string = 'templates/next16'): Promise<SeedFile[]> {
+async function loadTemplateFromStorage(prefix: string = 'templates/next12'): Promise<SeedFile[]> {
   const svc = supabaseService();
   const bucket = 'project-files';
   const manifestPath = `${prefix}/manifest.json`;
@@ -68,23 +68,20 @@ export async function createProject(_: any, formData: FormData) {
   try {
     let defaultFiles: Array<{ path: string; content: string }> = [];
     try {
-      defaultFiles = await loadTemplateFromStorage('templates/next16');
+      defaultFiles = await loadTemplateFromStorage('templates/next12');
     } catch {}
 
     if (defaultFiles.length === 0) {
-      // Fallback: minimales Next-Template, Nodebox-kompatibel
+      // Fallback: minimales React-Template für Sandpack
       defaultFiles = [
         {
           path: '/package.json',
           content: JSON.stringify(
             {
-              name: 'next-nodebox-app',
+              name: 'sandpack-react-starter',
               private: true,
-              version: '0.0.0',
-              scripts: { dev: 'next dev', start: 'next start' },
+              version: '0.1.0',
               dependencies: {
-                '@next/swc-wasm-nodejs': '12.1.6',
-                next: '12.1.6',
                 react: '18.2.0',
                 'react-dom': '18.2.0',
               },
@@ -94,24 +91,20 @@ export async function createProject(_: any, formData: FormData) {
           ),
         },
         {
-          path: '/next.config.js',
-          content: `/** @type {import('next').NextConfig} */\nconst nextConfig = {\n  reactStrictMode: true,\n};\nmodule.exports = nextConfig;\n`,
+          path: '/styles.css',
+          content: `body{margin:0;font-family:Inter,system-ui,sans-serif;background:#050505;color:#f5f5f5;}\nmain{max-width:960px;margin:0 auto;padding:64px 24px;}\nsection{border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:32px;background:rgba(255,255,255,0.02);}\na,button{cursor:pointer}\n`,
         },
         {
-          path: '/pages/_app.jsx',
-          content: `import '../styles/globals.css'\n\nexport default function MyApp({ Component, pageProps }) {\n  return <Component {...pageProps} />\n}\n`,
+          path: '/src/App.jsx',
+          content: `import './styles.css'\n\nexport default function App(){\n  return (\n    <main>\n      <section>\n        <p className='eyebrow'>Sandpack React</p>\n        <h1>Willkommen im Browser-Playground</h1>\n        <p>Bearbeite Dateien in der Sidebar und beobachte sofort die Vorschau.</p>\n      </section>\n    </main>\n  )\n}\n`,
         },
         {
-          path: '/styles/globals.css',
-          content: `html,body{padding:0;margin:0}*{box-sizing:border-box}\n:root{--bg:#0b0b0b;--fg:#eaeaea;--muted:#9aa0a6;--primary:#7c3aed}\nbody{background:var(--bg);color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}\na{color:inherit;text-decoration:none}\n.container{max-width:960px;margin:0 auto;padding:32px}\n.btn{display:inline-flex;align-items:center;gap:8px;background:var(--primary);color:#fff;border:0;border-radius:10px;padding:10px 14px;cursor:pointer}\n.card{background:#111;border:1px solid #222;border-radius:14px;padding:20px}\n.hint{color:var(--muted);font-size:12px}\n`,
+          path: '/src/main.jsx',
+          content: `import React from 'react'\nimport { createRoot } from 'react-dom/client'\nimport App from './App'\n\nconst root = createRoot(document.getElementById('root'))\nroot.render(<React.StrictMode><App /></React.StrictMode>)\n`,
         },
         {
-          path: '/pages/index.jsx',
-          content: `export default function Homepage({ name }) {\n  return (\n    <main className="container">\n      <h1 style={{fontSize:32,marginBottom:8}}>Next.js + Nodebox</h1>\n      <p className="hint" style={{marginBottom:16}}>SSR-Beispiel mit getServerSideProps</p>\n      <div className="card" style={{marginTop:16}}>\n        <p>Hallo, {name}!</p>\n        <p>Diese Seite läuft komplett im Browser via Nodebox-Next.</p>\n        <a className="btn" href="/api/hello">API testen</a>\n      </div>\n    </main>\n  );\n}\n\nexport function getServerSideProps() {\n  return {\n    props: {\n      name: 'Next.js'\n    }\n  };\n}\n`,
-        },
-        {
-          path: '/pages/api/hello.js',
-          content: `export default function handler(req, res) {\n  res.status(200).json({ message: 'Hello from Next.js API route!' });\n}\n`,
+          path: '/public/index.html',
+          content: `<!DOCTYPE html>\n<html lang=\"de\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>Sandpack React Starter</title>\n  </head>\n  <body>\n    <div id=\"root\"></div>\n  </body>\n</html>\n`,
         },
       ];
     }

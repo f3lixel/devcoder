@@ -188,6 +188,11 @@
   }
 }
 
+/* Spezieller Hintergrund für die @projects-Ansicht */
+body.projects-bg {
+  background-color: #1c1c1c;
+}
+
 /* Hide scrollbar but keep functionality */
 .scrollbar-hide {
   -ms-overflow-style: none;  /* Internet Explorer 10+ */

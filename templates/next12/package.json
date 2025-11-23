@@ -1,0 +1,14 @@
+{
+  "name": "sandpack-react-starter",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "echo Sandpack handles bundling",
+    "build": "echo Sandpack handles bundling",
+    "start": "echo Sandpack handles bundling"
+  },
+  "dependencies": {
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  }
+}
