@@ -15,3 +15,11 @@ Dieses Template ist auf das integrierte Sandpack-Preview ausgelegt. Es enthält 
 1. Dateien können beliebig erweitert werden (`src`-Ordner, zusätzliche Komponenten etc.).
 2. Sandpack kompiliert automatisch nach jedem Speichern.
 3. Für persistente Speicherung sorgt weiterhin die Files-API des Projekts.
+
+
+
+
+
+
+
+

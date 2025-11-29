@@ -606,6 +606,25 @@ function getSidebarContent(activeSection: string): SidebarContent {
         },
       ],
     },
+    "ai-settings": {
+      title: "AI Settings",
+      sections: [
+        {
+          title: "Configuration",
+          items: [
+            { icon: <SettingsIcon size={16} className="text-neutral-50" />, label: "General" },
+            { icon: <Analytics size={16} className="text-neutral-50" />, label: "Models & Performance" },
+          ],
+        },
+        {
+          title: "Safety",
+          items: [
+            { icon: <Security size={16} className="text-neutral-50" />, label: "Permissions" },
+            { icon: <Notification size={16} className="text-neutral-50" />, label: "Notifications" },
+          ],
+        },
+      ],
+    },
   };
 
   return contentMap[activeSection] || contentMap.tasks;
@@ -644,12 +663,8 @@ function IconNavigation({
 }) {
   const navItems = [
     { id: "dashboard", icon: <Dashboard size={16} />, label: "Dashboard" },
-    { id: "tasks", icon: <Task size={16} />, label: "Tasks" },
     { id: "projects", icon: <Folder size={16} />, label: "Projects" },
-    { id: "calendar", icon: <CalendarIcon size={16} />, label: "Calendar" },
-    { id: "teams", icon: <UserMultiple size={16} />, label: "Teams" },
-    { id: "analytics", icon: <Analytics size={16} />, label: "Analytics" },
-    { id: "files", icon: <DocumentAdd size={16} />, label: "Files" },
+    { id: "ai-settings", icon: <SettingsIcon size={16} />, label: "AI Settings" },
   ];
 
   return (
@@ -678,9 +693,6 @@ function IconNavigation({
 
       {/* Bottom section */}
       <div className="flex flex-col gap-2 w-full items-center">
-        <IconNavButton isActive={activeSection === "settings"} onClick={() => onSectionChange("settings")}>
-          <SettingsIcon size={16} />
-        </IconNavButton>
         <div className="size-8">
           <AvatarCircle />
         </div>
@@ -964,7 +976,7 @@ function MenuSection({
 /* --------------------------------- Layout -------------------------------- */
 
 function TwoLevelSidebar() {
-  const [activeSection, setActiveSection] = useState("dashboard");
+  const [activeSection, setActiveSection] = useState("projects");
 
   return (
     <div className="flex flex-row h-full">

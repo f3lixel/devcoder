@@ -12,57 +12,88 @@ import {
   SandboxEditorBreadcrumbs,
   SandboxPreview,
 } from '@/components/ui/shadcn-io/sandbox/index';
+import {
+  WebPreview,
+  WebPreviewNavigation,
+  WebPreviewNavigationButton,
+  WebPreviewUrl,
+} from '@/components/ui/shadcn-io/ai/web-preview';
 import type { SandpackProviderProps, SandpackTheme } from '@codesandbox/sandpack-react';
 import { useMemo, useCallback, useRef, useState, useEffect } from 'react';
 import { useSandpack } from '@codesandbox/sandpack-react';
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import { Loader } from '@/components/ai-elements/loader';
-import { ChevronLeft, ChevronRight, Code2, Monitor, ExternalLink, RotateCcw, Maximize2, MoreVertical, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Code2, Monitor, ExternalLink, RotateCcw, Maximize2, MoreVertical, AlertTriangle, ArrowLeft, ArrowRight, MousePointer2 } from 'lucide-react';
 
 interface SandboxPlaygroundProps {
   files: SandpackProviderProps['files'];
   onFilesChange: (path: string, code: string) => void;
   onFileSelect?: (path: string) => void;
   activeFile?: string;
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
+  /**
+   * Optionale Klassen für die Höhe des äußeren Containers (z.B. "h-[96vh] max-h-[1000px]").
+   * Standard ist "h-full", damit sich die Komponente normal an den verfügbaren Platz anpasst.
+   */
+  heightClassName?: string;
 }
 
-function Toolbar({ onOpenNewTab }: { onOpenNewTab: () => void }) {
+function Toolbar({ 
+  onOpenNewTab,
+  isFullscreen,
+  onToggleFullscreen
+}: { 
+  onOpenNewTab: () => void;
+  isFullscreen: boolean;
+  onToggleFullscreen: () => void;
+}) {
   const { sandpack } = useSandpack();
-
+  
   return (
-    <div className="mx-2 flex-1 flex items-center justify-center">
-      <div className="min-w-0 w-[720px] max-w-full h-8 flex items-center gap-2 rounded-md border border-[#3a3838] bg-[#272525] px-2 text-xs text-neutral-300">
-        <ChevronLeft size={14} className="text-neutral-500" />
-        <ChevronRight size={14} className="text-neutral-500" />
-        <div className="h-4 w-px bg-white/10" />
-        <Monitor size={14} className="text-neutral-500" />
-        <input
-          className="flex-1 bg-transparent outline-none placeholder:text-neutral-500"
-          placeholder="/"
-          value="/"
-          readOnly
-          aria-label="Pfad"
-        />
-        <div className="h-4 w-px bg-white/10" />
-        <button
-          type="button"
-          title="Open in new tab"
-          className="inline-flex h-6 w-6 items-center justify-center rounded-[6px] text-neutral-400 hover:text-white hover:bg-white/5"
-          onClick={onOpenNewTab}
-        >
-          <ExternalLink size={14} />
-        </button>
-        <button
-          type="button"
-          title="Reload"
-          className="inline-flex h-6 w-6 items-center justify-center rounded-[6px] text-neutral-400 hover:text-white hover:bg-white/5"
-          onClick={() => {
-            try { sandpack?.runSandpack?.(); } catch {}
-          }}
-        >
-          <RotateCcw size={14} />
-        </button>
-      </div>
+    <div className="flex-1 flex items-center min-w-0 w-full bg-[#09090b] text-white rounded-t-xl border-b border-[#27272a]">
+      <WebPreview className="flex-row size-auto border-0 rounded-none bg-transparent p-0 w-full" defaultUrl="http://localhost:3000">
+        <WebPreviewNavigation className="w-full h-12 bg-transparent border-none px-3 gap-3 flex items-center">
+          {/* Navigation Icons */}
+          <div className="flex items-center gap-2">
+            <WebPreviewNavigationButton onClick={() => {}} className="h-8 w-8 text-neutral-400 hover:text-white hover:bg-white/10">
+              <ArrowLeft size={16} />
+            </WebPreviewNavigationButton>
+            <WebPreviewNavigationButton onClick={() => {}} className="h-8 w-8 text-neutral-400 hover:text-white hover:bg-white/10">
+              <ArrowRight size={16} />
+            </WebPreviewNavigationButton>
+            <WebPreviewNavigationButton 
+              onClick={() => {
+                try { sandpack?.runSandpack?.(); } catch {}
+              }}
+              className="h-8 w-8 text-neutral-400 hover:text-white hover:bg-white/10"
+            >
+              <RotateCcw size={14} />
+            </WebPreviewNavigationButton>
+          </div>
+
+          {/* Address Bar */}
+          <div className="flex-1 flex items-center gap-2 min-w-0 bg-[#18181b] h-8 rounded-md px-3 border border-[#27272a]">
+            <span className="text-neutral-500 select-none font-mono">/</span>
+            <WebPreviewUrl 
+              className="bg-transparent border-none outline-none w-full text-neutral-300 placeholder:text-neutral-600 h-auto p-0 focus-visible:ring-0 shadow-none font-mono text-sm" 
+            />
+          </div>
+
+          {/* Right Actions */}
+          <div className="flex items-center gap-2">
+            <WebPreviewNavigationButton className="h-8 w-8 text-neutral-400 hover:text-white hover:bg-white/10">
+              <MousePointer2 size={16} />
+            </WebPreviewNavigationButton>
+            <WebPreviewNavigationButton onClick={onOpenNewTab} className="h-8 w-8 text-neutral-400 hover:text-white hover:bg-white/10">
+              <ExternalLink size={16} />
+            </WebPreviewNavigationButton>
+             <WebPreviewNavigationButton onClick={onToggleFullscreen} className="h-8 w-8 text-neutral-400 hover:text-white hover:bg-white/10">
+              <Maximize2 size={16} />
+            </WebPreviewNavigationButton>
+          </div>
+        </WebPreviewNavigation>
+      </WebPreview>
     </div>
   );
 }
@@ -74,10 +105,9 @@ function SandpackBridge({
   onFilesChange: (path: string, code: string) => void;
   onFileSelect?: (path: string) => void;
 }) {
-  const { sandpack } = useSandpack();
+  const { sandpack, listen } = useSandpack();
 
   useEffect(() => {
-    const listen = sandpack.listen;
     if (typeof listen !== 'function') {
       return;
     }
@@ -90,7 +120,7 @@ function SandpackBridge({
     return () => {
       unsubscribe?.();
     };
-  }, [sandpack, onFilesChange]);
+  }, [listen, onFilesChange]);
 
   useEffect(() => {
     if (sandpack?.activeFile && onFileSelect) {
@@ -124,8 +154,6 @@ function PreviewPane() {
     switch (status) {
       case 'running':
         return 'Vorschau läuft';
-      case 'processing':
-        return 'Build läuft…';
       case 'timeout':
         return 'Build Timeout';
       case 'idle':
@@ -180,6 +208,9 @@ export default function SandboxPlayground({
   onFilesChange,
   onFileSelect,
   activeFile,
+  activeTab,
+  onTabChange,
+  heightClassName,
 }: SandboxPlaygroundProps) {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
@@ -416,10 +447,12 @@ export default function SandboxPlayground({
     }
   }, []);
 
+  const heightClass = heightClassName ?? 'h-full';
+
   return (
     <div
       className={
-        'felixel-editor-tight h-full w-full p-0 m-0 ' +
+        `felixel-editor-tight w-full p-0 m-0 ${heightClass} ` +
         (isFullscreen ? 'fixed inset-0 z-[100] bg-[#272525]' : '')
       }
       ref={previewContainerRef}
@@ -436,39 +469,18 @@ export default function SandboxPlayground({
         }}
       >
         <SandpackBridge onFilesChange={handleCodeUpdate} onFileSelect={handleFileOpen} />
-        <SandboxTabs defaultValue="code" className="h-full p-0 rounded-2xl border border-[#1f1d1d] bg-[#272525] text-neutral-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)]">
-          <div className="h-[45px] flex items-center gap-2 px-2 border-b border-[#1f1d1d] bg-[#272525]">
-            <div className="flex items-center gap-1 px-1">
-              <button type="button" className="h-7 w-7 inline-flex items-center justify-center rounded-md text-neutral-400 hover:text-white hover:bg-white/5" aria-label="Zurück">
-                <ChevronLeft size={16} />
-              </button>
-              <button type="button" className="h-7 w-7 inline-flex items-center justify-center rounded-md text-neutral-400 hover:text-white hover:bg-white/5" aria-label="Vor">
-                <ChevronRight size={16} />
-              </button>
-            </div>
-            <div className="flex items-center">
-              <div className="inline-flex h-8 items-center rounded-md border border-white/10 bg-[#1f1d1d] overflow-hidden">
-                <SandboxTabsTrigger value="preview" className="h-8 w-10 p-0 rounded-none text-neutral-400 data-[state=active]:text-white data-[state=active]:bg-[#272525]">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                </SandboxTabsTrigger>
-                <div className="h-8 w-px bg-white/10" />
-                <SandboxTabsTrigger value="code" className="h-8 w-10 p-0 rounded-none text-neutral-400 data-[state=active]:text-white data-[state=active]:bg-[#272525]">
-                  <Code2 size={16} />
-                </SandboxTabsTrigger>
-              </div>
-            </div>
-            <Toolbar onOpenNewTab={handleOpenPreview} />
-            <div className="flex items-center gap-1 px-1">
-              <button type="button" className="h-7 w-7 inline-flex items-center justify-center rounded-md text-neutral-400 hover:text-white hover:bg-white/5" title="Fullscreen" onClick={() => setIsFullscreen((v) => !v)}>
-                <Maximize2 size={16} />
-              </button>
-              <button type="button" className="h-7 w-7 inline-flex items-center justify-center rounded-md text-neutral-400 hover:text-white hover:bg-white/5" title="More">
-                <MoreVertical size={16} />
-              </button>
-            </div>
+        <SandboxTabs 
+          defaultValue="code" 
+          value={activeTab} 
+          onValueChange={onTabChange}
+          className="h-full p-0 rounded-2xl border border-[#1f1d1d] bg-[#272525] text-neutral-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)]"
+        >
+          <div className="h-[50px] flex items-center p-0 border-b border-[#1f1d1d] bg-[#09090b] rounded-t-2xl overflow-hidden">
+            <Toolbar 
+              onOpenNewTab={handleOpenPreview} 
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={() => setIsFullscreen(v => !v)}
+            />
           </div>
           <SandboxLayout>
             <SandboxTabsContent value="preview" className="relative h-full">
