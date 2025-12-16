@@ -578,7 +578,7 @@ export function NewAIChat({
   }, []);
 
   return (
-    <div className="flex h-full flex-col" style={{ backgroundColor: "#1c1c1c" }}>
+    <div className="flex h-full flex-col" style={{ backgroundColor: "#151515" }}>
       <Conversation className="flex-1">
         <ConversationContent className="space-y-6">
           {/* Live Todo Plan */}

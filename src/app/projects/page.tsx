@@ -81,7 +81,7 @@ export default function Home() {
   return (
     <div
       className="h-[100vh] w-full overflow-hidden flex"
-      style={{ backgroundColor: "#1c1c1c" }}
+      style={{ backgroundColor: "#151515" }}
     >
       <div className="flex-1 min-w-0 relative">
         <Suspense fallback={<div>Loading project...</div>}>

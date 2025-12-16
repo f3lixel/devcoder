@@ -12,6 +12,7 @@ import {
   SandboxEditorBreadcrumbs,
   SandboxPreview,
 } from '@/components/ui/shadcn-io/sandbox/index';
+import WorkspaceTab from '@/components/WorkspaceTab';
 import {
   WebPreview,
   WebPreviewNavigation,
@@ -475,16 +476,21 @@ export default function SandboxPlayground({
           onValueChange={onTabChange}
           className="h-full p-0 rounded-2xl border border-[#1f1d1d] bg-[#272525] text-neutral-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)]"
         >
-          <div className="h-[50px] flex items-center p-0 border-b border-[#1f1d1d] bg-[#09090b] rounded-t-2xl overflow-hidden">
-            <Toolbar 
-              onOpenNewTab={handleOpenPreview} 
-              isFullscreen={isFullscreen}
-              onToggleFullscreen={() => setIsFullscreen(v => !v)}
-            />
-          </div>
+          {(activeTab ?? 'preview') === 'preview' && (
+            <div className="h-[50px] flex items-center p-0 border-b border-[#1f1d1d] bg-[#09090b] rounded-t-2xl overflow-hidden">
+              <Toolbar 
+                onOpenNewTab={handleOpenPreview} 
+                isFullscreen={isFullscreen}
+                onToggleFullscreen={() => setIsFullscreen(v => !v)}
+              />
+            </div>
+          )}
           <SandboxLayout>
             <SandboxTabsContent value="preview" className="relative h-full">
               <PreviewPane />
+            </SandboxTabsContent>
+            <SandboxTabsContent value="workspace" className="h-full w-full p-0 m-0 overflow-hidden">
+              <WorkspaceTab />
             </SandboxTabsContent>
             <SandboxTabsContent value="code" className="h-full w-full p-0 m-0">
               <PanelGroup direction="horizontal" className="h-full w-full p-0 m-0" style={{ gap: 0 }}>
@@ -502,6 +508,16 @@ export default function SandboxPlayground({
                   </div>
                 </Panel>
               </PanelGroup>
+            </SandboxTabsContent>
+            <SandboxTabsContent value="database" className="h-full w-full p-0 m-0 overflow-hidden">
+              <div className="h-full w-full rounded-b-2xl bg-[#0b0b0d] text-zinc-100">
+                <div className="px-6 pt-6">
+                  <div className="text-lg font-semibold tracking-tight text-zinc-50">Database</div>
+                  <div className="mt-1 text-sm text-zinc-400">
+                    Dieser Bereich kommt als nächstes – Schema, Tabellen und Queries im Dark Mode.
+                  </div>
+                </div>
+              </div>
             </SandboxTabsContent>
           </SandboxLayout>
         </SandboxTabs>
